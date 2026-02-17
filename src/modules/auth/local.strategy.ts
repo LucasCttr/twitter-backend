@@ -1,11 +1,13 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { validateUser } from "./auth.service.js";
+import { AuthService } from './auth.service.js';
+
+const authService = new AuthService();
 
 passport.use(
   new LocalStrategy({ usernameField: "email", passwordField: "password" }, async (email, password, done) => {
     try {
-      const user = await validateUser(email, password);
+      const user = await authService.validateUser(email, password);
       if (!user) return done(null, false, { message: "Invalid credentials" });
       return done(null, user);
     } catch (err) {

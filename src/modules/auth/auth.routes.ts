@@ -1,8 +1,9 @@
 import express from "express";
 import passport from "passport";
-import * as authService from "./auth.service.js";
 import { signJwt } from "../../utils/jwt.js";
+import { AuthService } from "./auth.service.js";
 
+const authService = new AuthService();
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
