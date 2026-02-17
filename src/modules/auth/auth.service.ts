@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import { PrismaClient } from '../../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { type OnModuleInit, type OnModuleDestroy, Injectable } from '@nestjs/common';
+import { type OnModuleInit, type OnModuleDestroy, Injectable, BadRequestException } from '@nestjs/common';
 import type { RegisterDto } from "./dto/register.dto.js";
 
 @Injectable()
@@ -33,10 +33,24 @@ export class AuthService extends PrismaClient implements OnModuleInit, OnModuleD
 
 
   async registerUser(dto: RegisterDto) {
-    const existing = await this.user.findUnique({ where: { email: dto.email } });
-    if (existing) throw new Error("Email already in use");
+    const existing = await this.user.findUnique({ 
+      where: { email: dto.email } 
+    });
+
+    if (existing) {
+      throw new BadRequestException('Email already in use');
+    }
+
     const hash = await bcrypt.hash(dto.password, 10);
-    const user = await this.user.create({ data: { name: dto.name, email: dto.email, password: hash } });
+
+    const user = await this.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        password: hash,
+      },
+    });
+
     return { id: user.id, name: user.name, email: user.email };
   }
 

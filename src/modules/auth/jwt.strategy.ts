@@ -1,22 +1,25 @@
-import passport from "passport";
-import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
-import { AuthService } from "./auth.service.js";
+import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { AuthService } from './auth.service.js';
 
-const authService = new AuthService();
-
-passport.use(
-  new JwtStrategy(
-    { jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), secretOrKey: process.env.JWT_SECRET as string },
-    async (payload, done) => {
-      try {
-        const user = await authService.findUserById(payload.sub as string);
-        if (!user) return done(null, false);
-        return done(null, user);
-      } catch (err) {
-        return done(err as Error, false);
-      }
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(private authService: AuthService) {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable is not defined');
     }
-  )
-);
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: process.env.JWT_SECRET,
+    });
+  }
 
-export default passport;
+  async validate(payload: any) {
+    const user = await this.authService.findUserById(payload.sub);
+    if (!user) {
+      return null;
+    }
+    return user;
+  }
+}
