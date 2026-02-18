@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
 
 const SECRET = process.env.JWT_SECRET || "dev_secret";

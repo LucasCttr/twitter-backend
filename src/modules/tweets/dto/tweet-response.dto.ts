@@ -1,4 +1,4 @@
-import { Tweet } from "../../../../generated/prisma/client.js";
+import { Tweet } from  "@prisma/client";
 
 export class TweetResponseDto {
   id!: string;

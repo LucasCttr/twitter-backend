@@ -1,22 +1,24 @@
 {
   "compilerOptions": {
-    // ✅ AGREGAR ESTAS DOS:
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-
     "module": "nodenext",
-    "target": "ES2021",        // ⚠️ cambiar de "esnext" — emitDecoratorMetadata
-                                //    no funciona bien con esnext
-
-    // ❌ QUITAR ESTAS — son incompatibles con NestJS:
-    // "verbatimModuleSyntax": true,   // rompe emitDecoratorMetadata
-    // "isolatedModules": true,        // conflicto con decoradores de metadata
-
-    "types": ["node"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": [
+      "node"
+    ],
     "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
     "strict": true,
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "generated",
+    "prisma.config.ts"
+  ]
 }

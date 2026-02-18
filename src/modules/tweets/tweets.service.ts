@@ -1,5 +1,5 @@
 import { BadRequestException, Get, Injectable, Post } from "@nestjs/common";
-import { PrismaService } from "../../../prisma/prisma.service.js";
+import { PrismaService } from "../../database/prisma.service.js";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetResponseDto } from "./dto/tweet-response.dto.js";
 

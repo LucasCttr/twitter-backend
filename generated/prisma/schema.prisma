@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tweets    Tweet[]
+  likes     Like[]
+  followers Follow[] @relation("followers")
+  following Follow[] @relation("following")
+}
+
+model Tweet {
+  id        String    @id @default(uuid())
+  content   String?
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  parentId String?
+  parent   Tweet?  @relation("Reply", fields: [parentId], references: [id])
+  replies  Tweet[] @relation("Reply")
+
+  retweetOfId String?
+  retweetOf   Tweet?  @relation("Retweet", fields: [retweetOfId], references: [id])
+  retweets    Tweet[] @relation("Retweet")
+
+  likes Like[]
+
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+
+  follower  User @relation("following", fields: [followerId], references: [id])
+  following User @relation("followers", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Like {
+  userId  String
+  tweetId String
+
+  user  User  @relation(fields: [userId], references: [id])
+  tweet Tweet @relation(fields: [tweetId], references: [id])
+
+  @@id([userId, tweetId])
+}
