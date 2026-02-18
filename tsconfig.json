@@ -2,12 +2,12 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "module": "nodenext",
+    "module": "commonjs",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "types": [
       "node"
     ],
@@ -18,7 +18,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "generated",
-    "prisma.config.ts"
+    "src/generated/prisma"
   ]
 }

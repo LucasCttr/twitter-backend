@@ -12,7 +12,7 @@
  */
 
 import * as runtime from "@prisma/client/runtime/client"
-import type * as Prisma from "./prismaNamespace.js"
+import type * as Prisma from "./prismaNamespace"
 
 
 const config: runtime.GetPrismaClientConfig = {
@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.4.0",
   "engineVersion": "ab56fe763f921d033a6c195e7ddeb3e255bdbb57",
   "activeProvider": "postgresql",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel User {\n  id        String   @id @default(uuid())\n  name      String\n  email     String   @unique\n  password  String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  tweets    Tweet[]\n  likes     Like[]\n  followers Follow[] @relation(\"followers\")\n  following Follow[] @relation(\"following\")\n}\n\nmodel Tweet {\n  id        String    @id @default(uuid())\n  content   String?\n  createdAt DateTime  @default(now())\n  deletedAt DateTime?\n\n  authorId String\n  author   User   @relation(fields: [authorId], references: [id])\n\n  parentId String?\n  parent   Tweet?  @relation(\"Reply\", fields: [parentId], references: [id])\n  replies  Tweet[] @relation(\"Reply\")\n\n  retweetOfId String?\n  retweetOf   Tweet?  @relation(\"Retweet\", fields: [retweetOfId], references: [id])\n  retweets    Tweet[] @relation(\"Retweet\")\n\n  likes Like[]\n\n  @@index([authorId])\n  @@index([createdAt])\n}\n\nmodel Follow {\n  followerId  String\n  followingId String\n\n  follower  User @relation(\"following\", fields: [followerId], references: [id])\n  following User @relation(\"followers\", fields: [followingId], references: [id])\n\n  @@id([followerId, followingId])\n  @@index([followingId])\n}\n\nmodel Like {\n  userId  String\n  tweetId String\n\n  user  User  @relation(fields: [userId], references: [id])\n  tweet Tweet @relation(fields: [tweetId], references: [id])\n\n  @@id([userId, tweetId])\n}\n",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider     = \"prisma-client\"\n  moduleFormat = \"cjs\"\n  output       = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel User {\n  id        String   @id @default(uuid())\n  name      String\n  email     String   @unique\n  password  String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  tweets    Tweet[]\n  likes     Like[]\n  followers Follow[] @relation(\"followers\")\n  following Follow[] @relation(\"following\")\n}\n\nmodel Tweet {\n  id        String    @id @default(uuid())\n  content   String?\n  createdAt DateTime  @default(now())\n  deletedAt DateTime?\n\n  authorId String\n  author   User   @relation(fields: [authorId], references: [id])\n\n  parentId String?\n  parent   Tweet?  @relation(\"Reply\", fields: [parentId], references: [id])\n  replies  Tweet[] @relation(\"Reply\")\n\n  retweetOfId String?\n  retweetOf   Tweet?  @relation(\"Retweet\", fields: [retweetOfId], references: [id])\n  retweets    Tweet[] @relation(\"Retweet\")\n\n  likes Like[]\n\n  @@index([authorId])\n  @@index([createdAt])\n}\n\nmodel Follow {\n  followerId  String\n  followingId String\n\n  follower  User @relation(\"following\", fields: [followerId], references: [id])\n  following User @relation(\"followers\", fields: [followingId], references: [id])\n\n  @@id([followerId, followingId])\n  @@index([followingId])\n}\n\nmodel Like {\n  userId  String\n  tweetId String\n\n  user  User  @relation(fields: [userId], references: [id])\n  tweet Tweet @relation(fields: [tweetId], references: [id])\n\n  @@id([userId, tweetId])\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -45,10 +45,10 @@ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Modul
 }
 
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
+  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.js"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
+    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.js")
     return await decodeBase64AsWasm(wasm)
   },
 
