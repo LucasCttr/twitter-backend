@@ -5,10 +5,13 @@ import { PrismaModule } from './database/prisma.module.js';
 import { UserController } from './modules/users/user.controller.js';
 import { UserService } from './modules/users/user.service.js';
 import { UserModule } from './modules/users/user.module.js';
+import { SocialService } from './modules/social/social.service';
+import { SocialController } from './modules/social/social.controller.js';
+import { SocialModule } from './modules/social/social.module.js';
 
 @Module({
-  imports: [AuthModule, TweetsModule,PrismaModule, UserModule, PrismaModule],
-  controllers: [UserController],
-  providers: [UserService],
+  imports: [AuthModule, TweetsModule,PrismaModule, UserModule, PrismaModule, SocialModule],
+  controllers: [UserController, SocialController],
+  providers: [UserService, SocialService],
 })
 export class AppModule {}
