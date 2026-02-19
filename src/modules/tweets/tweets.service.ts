@@ -54,10 +54,10 @@ export class TweetsService {
 
   async getByPagination(pagination: TweetFilterDto) {
     // Asegura que page y limit sean números
-    const page = Number(pagination.page) || 1;
-    const limit = Number(pagination.limit) || 10;
+    const page = pagination.page;
+    const limit = pagination.limit; 
     const deletedAt = null; // Solo tweets no eliminados
-    
+
     // Construye el objeto where solo con filtros válidos
     const where: any = {};
     if (pagination.content) {

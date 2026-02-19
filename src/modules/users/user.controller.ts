@@ -1,10 +1,14 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
+import { UserService } from './user.service';
+import { UserFilterDto } from './dto/user-filter.dto';
 
-@Controller('user')
+@Controller('users')
 export class UserController {
+     constructor(private readonly userService: UserService) {}
 
-    @Post('register')
-    register() {
-        return "User registered successfully";
+    @Get()
+    getByPagination(@Param() filter: UserFilterDto) {
+        return this.userService.getByPagination(filter);
     }
+
 }

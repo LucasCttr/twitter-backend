@@ -482,10 +482,6 @@ export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type TweetUpdateOneWithoutRepliesNestedInput = {
   create?: Prisma.XOR<Prisma.TweetCreateWithoutRepliesInput, Prisma.TweetUncheckedCreateWithoutRepliesInput>
   connectOrCreate?: Prisma.TweetCreateOrConnectWithoutRepliesInput

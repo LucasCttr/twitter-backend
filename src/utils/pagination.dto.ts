@@ -1,11 +1,16 @@
-export class PaginationDto {
-  page: number;
-  limit: number;
+import { IsDefined, IsPositive } from "class-validator";
+import { Type } from 'class-transformer';
 
-  constructor(page = 1, limit = 10) {
-    this.page = page;
-    this.limit = limit;
-  }
+export class PaginationDto {
+  @IsDefined()
+  @IsPositive()
+  @Type(() => Number)
+  page!: number;
+
+  @IsDefined()
+  @IsPositive()
+  @Type(() => Number)
+  limit!: number;
 }
 
 export class PaginatedResult<T> {
