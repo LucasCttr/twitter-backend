@@ -21,7 +21,7 @@ export class SocialController {
     @CurrentUser() user: JwtPayload,
     @Param('userId') userId: string,
   ) {
-    return this.socialService.follow(user.id, userId)
+    return this.socialService.followUser(user.id, userId)
   }
 
   @Delete('follow/:userId')
@@ -29,7 +29,7 @@ export class SocialController {
     @CurrentUser() user: JwtPayload,
     @Param('userId') userId: string,
   ) {
-    return this.socialService.unfollow(user.id, userId)
+    return this.socialService.unfollowUser(user.id, userId)
   }
 
   // LIKE
