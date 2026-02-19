@@ -1,9 +1,11 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guards.js";
 import { JwtPayload } from "jsonwebtoken";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetsService } from "./tweets.service.js";
 import { CurrentUser } from "../../utils/current-user.decorator.js";
+import { PaginationDto } from "../../utils/pagination.dto.js";
+import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 
 @Controller("tweets")
 export class TweetsController {
@@ -14,7 +16,16 @@ export class TweetsController {
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateTweetDto) {
     return this.tweetsService.create(user.id, dto);
   }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  getByPagination(@Query() pagination: TweetFilterDto) {
+    return this.tweetsService.getByPagination(pagination);
+  }
+
+  @Delete(":id")
+  @UseGuards(JwtAuthGuard)
+  delete(@Param("id") id: string) {
+    return this.tweetsService.delete(id);
+  }
 }
-
-
-
