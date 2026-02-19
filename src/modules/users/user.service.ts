@@ -11,8 +11,8 @@ export class UserService {
     const limit = filter.limit;
     const where: any = {};
 
-    if (filter.username) {
-      where.username = { contains: filter.username, mode: "insensitive" };
+    if (filter.name) {
+      where.name = { contains: filter.name, mode: "insensitive" };
     }
 
     if (filter.email) {

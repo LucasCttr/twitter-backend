@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserFilterDto } from './dto/user-filter.dto';
 
@@ -7,7 +7,7 @@ export class UserController {
      constructor(private readonly userService: UserService) {}
 
     @Get()
-    getByPagination(@Param() filter: UserFilterDto) {
+    getByPagination(@Query() filter: UserFilterDto) {
         return this.userService.getByPagination(filter);
     }
 
