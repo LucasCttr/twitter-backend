@@ -1,9 +1,16 @@
-import { BadRequestException, Get, Injectable, NotFoundException, Post } from "@nestjs/common";
+import {
+  BadRequestException,
+  Get,
+  Injectable,
+  NotFoundException,
+  Post,
+} from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service.js";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetResponseDto } from "./dto/tweet-response.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 import { PaginatedResult } from "../../utils/pagination.dto.js";
+import { FeedResponseDto } from "../feed/dto/feed-query.dto.js";
 
 @Injectable()
 export class TweetsService {
@@ -55,7 +62,7 @@ export class TweetsService {
   async getByPagination(pagination: TweetFilterDto) {
     // Asegura que page y limit sean números
     const page = pagination.page;
-    const limit = pagination.limit; 
+    const limit = pagination.limit;
     const deletedAt = null; // Solo tweets no eliminados
 
     // Construye el objeto where solo con filtros válidos
@@ -73,7 +80,6 @@ export class TweetsService {
       where.retweetOfId = pagination.retweetOfId;
     }
     where.deletedAt = deletedAt;
-
 
     const [tweets, total] = await this.prisma.$transaction([
       this.prisma.tweet.findMany({
@@ -114,5 +120,37 @@ export class TweetsService {
       data: { deletedAt: new Date() },
     });
     return { message: "Tweet deleted successfully" };
+  }
+
+  async getFeed(userId: string, take = 20, cursor?: string) {
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+
+    const ids = following.map((f) => f.followingId);
+    ids.push(userId);
+
+    const tweets = await this.prisma.tweet.findMany({
+      where: {
+        authorId: { in: ids },
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: take + 1, // 👈 importante
+      ...(cursor && {
+        skip: 1,
+        cursor: { id: cursor },
+      }),
+    });
+
+    return new FeedResponseDto(tweets, take);
   }
 }

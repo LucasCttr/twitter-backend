@@ -4,6 +4,7 @@ import { TweetsController } from './tweets.controller.js';
 
 @Module({
   providers: [TweetsService],
-  controllers: [TweetsController]
+  controllers: [TweetsController],
+  exports: [TweetsService],
 })
 export class TweetsModule {}
