@@ -151,6 +151,7 @@ export class TweetsService {
       }),
     });
 
-    return new FeedResponseDto(tweets, take);
+    // Mapeo a TweetResponseDto y construcción de FeedResponseDto
+    return new FeedResponseDto(tweets.map(t => new TweetResponseDto(t)), take);
   }
 }
