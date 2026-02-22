@@ -8,13 +8,11 @@ import { UserModule } from './modules/users/user.module.js';
 import { SocialService } from './modules/social/social.service';
 import { SocialController } from './modules/social/social.controller.js';
 import { SocialModule } from './modules/social/social.module.js';
-import { FeedController } from './modules/feed/feed.controller';
-import { FeedService } from './modules/feed/feed.service';
 import { FeedModule } from './modules/feed/feed.module';
 
 @Module({
-  imports: [AuthModule, TweetsModule,PrismaModule, UserModule, PrismaModule, SocialModule, FeedModule],
-  controllers: [UserController, SocialController, FeedController],
-  providers: [UserService, SocialService, FeedService],
+  imports: [AuthModule, TweetsModule, PrismaModule, UserModule, PrismaModule, SocialModule, FeedModule],
+  controllers: [UserController, SocialController],
+  providers: [UserService, SocialService],
 })
 export class AppModule {}
