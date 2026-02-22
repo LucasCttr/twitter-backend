@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { TweetsModule } from './modules/tweets/tweets.module.js';
 import { PrismaModule } from './database/prisma.module.js';
@@ -11,7 +12,21 @@ import { SocialModule } from './modules/social/social.module.js';
 import { FeedModule } from './modules/feed/feed.module';
 
 @Module({
-  imports: [AuthModule, TweetsModule, PrismaModule, UserModule, PrismaModule, SocialModule, FeedModule],
+  imports: [
+    AuthModule,
+    TweetsModule,
+    PrismaModule,
+    UserModule,
+    PrismaModule,
+    SocialModule,
+    FeedModule,
+    BullModule.forRoot({
+      redis: {
+        host: process.env.REDIS_HOST ?? 'localhost',
+        port: Number(process.env.REDIS_PORT) ?? 6379,
+      },
+    }),
+  ],
   controllers: [UserController, SocialController],
   providers: [UserService, SocialService],
 })

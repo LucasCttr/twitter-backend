@@ -13,5 +13,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7
+    container_name: twitter-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    container_name: twitter-backend
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/twitter
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+
 volumes:
   postgres_data:

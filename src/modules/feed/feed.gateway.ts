@@ -10,6 +10,8 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { FeedService } from "./feed.service";
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
 
 @WebSocketGateway({ namespace: "/feed" })
 export class FeedGateway implements OnGatewayConnection, OnGatewayInit {
@@ -18,7 +20,19 @@ export class FeedGateway implements OnGatewayConnection, OnGatewayInit {
 
   constructor(private readonly feedService: FeedService) {}
 
-  afterInit() {
+  async afterInit() {
+    // configure redis adapter when REDIS_URL is present
+    const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
+    try {
+      const pubClient = createClient({ url: redisUrl });
+      await pubClient.connect();
+      const subClient = pubClient.duplicate();
+      await subClient.connect();
+      this.server.adapter(createAdapter(pubClient, subClient));
+    } catch (err) {
+      // if adapter setup fails, proceed without it (single instance)
+    }
+
     this.feedService.setGateway(this);
   }
 

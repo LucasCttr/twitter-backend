@@ -11,10 +11,15 @@ import { TweetResponseDto } from "./dto/tweet-response.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 import { PaginatedResult } from "../../utils/pagination.dto.js";
 import { FeedResponseDto } from "../feed/dto/feed-query.dto.js";
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class TweetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('tweet-notify') private readonly notifyQueue: Queue,
+  ) {}
 
   async create(
     authorId: string,
@@ -43,6 +48,8 @@ export class TweetsService {
       },
     });
 
+    // enqueue durable job for notification/fan-out
+    await this.notifyQueue.add('notify', { tweet: { id: tweet.id, createdAt: tweet.createdAt } });
     return new TweetResponseDto(tweet);
   }
 

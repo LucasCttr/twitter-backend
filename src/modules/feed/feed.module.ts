@@ -1,13 +1,17 @@
 import { Module } from "@nestjs/common";
-import { TweetsService } from "../tweets/tweets.service";
+import { BullModule } from '@nestjs/bull';
 import { FeedController } from "./feed.controller";
-import { TweetsModule } from '../tweets/tweets.module';
 import { FeedGateway } from "./feed.gateway";
 import { FeedService } from "./feed.service";
+import { NotifyProcessor } from "./notify.processor";
+import { TweetsModule } from '../tweets/tweets.module';
 
 @Module({
-  imports: [TweetsModule],
+  imports: [
+    TweetsModule,
+    BullModule.registerQueue({ name: 'tweet-notify' }),
+  ],
   controllers: [FeedController],
-  providers: [FeedGateway, FeedService],
+  providers: [FeedGateway, FeedService, NotifyProcessor],
 })
 export class FeedModule {}
