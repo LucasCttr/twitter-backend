@@ -39,7 +39,15 @@ export class FeedGateway implements OnGatewayConnection, OnGatewayInit {
   // Map<socketId, lastSeenTweet>
   private clients: Map<string, { id: string; createdAt: string }> = new Map();
 
+  // Mapa para asociar userId con socketId
+  private userSockets: Map<string, string> = new Map();
+
   handleConnection(client: Socket) {
+    const userId = client.handshake.auth.userId as string; // <-- Cambia aquí
+    console.log("Conexión recibida:", userId, client.id);
+    if (userId) {
+      this.userSockets.set(userId, client.id);
+    }
     // connection handling (no logs)
   }
 
@@ -62,5 +70,15 @@ export class FeedGateway implements OnGatewayConnection, OnGatewayInit {
 
   private isNewer(newTweet: { createdAt: string }, lastSeenTweet: { createdAt: string }): boolean {
     return new Date(newTweet.createdAt) > new Date(lastSeenTweet.createdAt);
+  }
+
+  emitToUser(userId: string, event: string, payload: any) {
+    const socketId = this.userSockets.get(userId);
+    console.log(`emitToUser: userId=${userId}, socketId=${socketId}, event=${event}`); // <-- Log
+    if (socketId) {
+      this.server.to(socketId).emit(event, payload);
+    } else {
+      console.log(`No se encontró socket para userId: ${userId}`);
+    }
   }
 }

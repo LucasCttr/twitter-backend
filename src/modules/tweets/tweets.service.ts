@@ -49,7 +49,11 @@ export class TweetsService {
     });
 
     // enqueue durable job for notification/fan-out
-    await this.notifyQueue.add('notify', { tweet: { id: tweet.id, createdAt: tweet.createdAt } });
+    await this.notifyQueue.add('notify', { 
+      tweet: { id: tweet.id, createdAt: tweet.createdAt },
+      userId: authorId,
+      lastSeen:lastSeenDate, // <-- Agrega aquí la fecha de última recarga del feed    SEGUIR
+    });
     return new TweetResponseDto(tweet);
   }
 

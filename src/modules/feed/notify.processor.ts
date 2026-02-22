@@ -10,9 +10,15 @@ export class NotifyProcessor {
 
   @Process('notify')
   async handleNotify(job: Job) {
-    const { tweet } = job.data;
+    const { tweet, userId, lastSeen } = job.data;
     if (!tweet) return;
-    // FeedService will deliver to connected clients (or update unread counters)
-    await this.feedService.notifyNewTweets([{ id: tweet.id, createdAt: tweet.createdAt }]);
+
+    console.log("Notificando a userId:", userId);
+
+    // Calcula la cantidad de tweets no vistos
+    const unreadCount = await this.feedService.getUnreadCount(userId, lastSeen);
+
+    // Notifica solo la cantidad por socket
+    this.feedService.notifyUnreadCount(userId, unreadCount);
   }
 }
