@@ -9,6 +9,7 @@ export class TweetResponseDto {
   };
   parentId?: string;
   retweetOfId?: string;
+  retweetOf?: TweetResponseDto;
   createdAt!: Date;
 
   constructor(tweet: any) {
@@ -20,5 +21,8 @@ export class TweetResponseDto {
     this.parentId = tweet.parentId ?? undefined;
     this.retweetOfId = tweet.retweetOfId ?? undefined;
     this.createdAt = tweet.createdAt;
+    if (tweet.retweetOf) {
+      this.retweetOf = new TweetResponseDto(tweet.retweetOf);
+    }
   }
 }

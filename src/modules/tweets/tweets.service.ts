@@ -166,6 +166,16 @@ export class TweetsService {
             name: true,
           },
         },
+        retweetOf: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: take + 1, // 👈 importante
@@ -176,6 +186,6 @@ export class TweetsService {
     });
 
     // Mapeo a TweetResponseDto y construcción de FeedResponseDto
-    return new FeedResponseDto(tweets.map(t => new TweetResponseDto(t)), take);
+    return new FeedResponseDto(tweets.map((t) => new TweetResponseDto(t)), take);
   }
 }
