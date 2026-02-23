@@ -10,6 +10,7 @@ import { SocialService } from './modules/social/social.service';
 import { SocialController } from './modules/social/social.controller.js';
 import { SocialModule } from './modules/social/social.module.js';
 import { FeedModule } from './modules/feed/feed.module';
+import { NotificationsModule } from './modules/notifications/notification.module.js';
 
 @Module({
   imports: [
@@ -17,9 +18,9 @@ import { FeedModule } from './modules/feed/feed.module';
     TweetsModule,
     PrismaModule,
     UserModule,
-    PrismaModule,
     SocialModule,
     FeedModule,
+    NotificationsModule,
     BullModule.forRoot({
       redis: {
         host: process.env.REDIS_HOST ?? 'localhost',
@@ -27,7 +28,9 @@ import { FeedModule } from './modules/feed/feed.module';
       },
     }),
   ],
-  controllers: [UserController, SocialController],
-  providers: [UserService, SocialService],
+  // controllers: [UserController, SocialController],
+  // providers: [UserService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

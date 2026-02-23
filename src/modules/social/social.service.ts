@@ -1,90 +1,149 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { InjectQueue } from "@nestjs/bull";
+import { Queue } from "bull";
+import { LikeNotifyDto } from "../notifications/dto/like-notify.dto";
+import { FollowNotifyDto } from "../notifications/dto/follow-notify.dto";
 
 @Injectable()
 export class SocialService {
-    constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue("like-notify") private readonly likeNotifyQueue: Queue,
+    @InjectQueue("follow-notify") private readonly followNotifyQueue: Queue,
+  ) {}
 
-    async followUser(userId: string, targetUserId: string) {
-        if (userId === targetUserId) {
-            throw new Error("You cannot follow yourself");
-        }
-
-        const existingFollow = await this.prisma.follow.findUnique({
-            where: {
-                followerId_followingId: {
-                    followerId: userId,
-                    followingId: targetUserId,
-                },
-            },
-        });
-
-        if (existingFollow) {
-            throw new Error("You are already following this user");
-        }
-
-        return this.prisma.follow.create({
-            data: {
-                followerId: userId,
-                followingId: targetUserId,
-            },
-        });
+  async followUser(userId: string, targetUserId: string) {
+    if (userId === targetUserId) {
+      throw new BadRequestException("You cannot follow yourself");
     }
 
-    async unfollowUser(userId: string, targetUserId: string) {
-        return this.prisma.follow.delete({
-            where: {
-                followerId_followingId: {
-                    followerId: userId,
-                    followingId: targetUserId,
-                },
-            },
-        });
+    const existingFollow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (existingFollow) {
+      throw new BadRequestException("You are already following this user");
     }
 
-    async like(userId: string, tweetId: string) {
-        return this.prisma.like.create({
-            data: {
-                userId,
-                tweetId,
-            },
-        });
+    const created = await this.prisma.follow.create({
+      data: {
+        followerId: userId,
+        followingId: targetUserId,
+      },
+    });
+
+    const payload: FollowNotifyDto = {
+      userId: targetUserId, // receptor
+      followerId: userId, // quien siguió
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.followNotifyQueue.add("follow-notify", payload, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: true,
+    });
+
+    return created;
+  }
+
+  async unfollowUser(userId: string, targetUserId: string) {
+    const existingFollow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (!existingFollow) {
+      throw new NotFoundException('Follow relation not found');
     }
 
-    async unlike(userId: string, tweetId: string) {
-        return this.prisma.like.delete({
-            where: {
-                userId_tweetId: {
-                    userId,
-                    tweetId,
-                },
-            },
-        });
+    return this.prisma.follow.delete({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+  }
+
+  async like(userId: string, tweetId: string) {
+    const like = await this.prisma.like.create({
+      data: {
+        userId,
+        tweetId,
+      },
+    });
+
+    // Obtener el autor del tweet para notificar
+    const tweet = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: { authorId: true },
+    });
+
+    // evita notificarte a ti mismo o si no hay autor
+    if (!tweet?.authorId || tweet.authorId === userId) return like;
+
+    const payload: LikeNotifyDto = {
+      userId: tweet.authorId,
+      tweetId,
+      likerId: userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.likeNotifyQueue.add("like-notify", payload, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: true,
+    });
+
+    return like;
+  }
+
+  async unlike(userId: string, tweetId: string) {
+    return this.prisma.like.delete({
+      where: {
+        userId_tweetId: {
+          userId,
+          tweetId,
+        },
+      },
+    });
+  }
+
+  async retweet(userId: string, tweetId: string) {
+    return this.prisma.tweet.create({
+      data: {
+        authorId: userId,
+        retweetOfId: tweetId,
+      },
+    });
+  }
+
+  async undoRetweet(userId: string, tweetId: string) {
+    const retweet = await this.prisma.tweet.findFirst({
+      where: {
+        authorId: userId,
+        retweetOfId: tweetId,
+      },
+    });
+
+    if (!retweet) {
+      throw new Error("Retweet not found");
     }
 
-    async retweet(userId: string, tweetId: string) {
-        return this.prisma.tweet.create({
-            data: {
-                authorId: userId,
-                retweetOfId: tweetId,
-            },
-        });
-    }
-
-    async undoRetweet(userId: string, tweetId: string) {
-        const retweet = await this.prisma.tweet.findFirst({
-            where: {
-                authorId: userId,
-                retweetOfId: tweetId,
-            },
-        });
-
-        if (!retweet) {
-            throw new Error("Retweet not found");
-        }
-
-        return this.prisma.tweet.delete({
-            where: { id: retweet.id },
-        });
-    }
+    return this.prisma.tweet.delete({
+      where: { id: retweet.id },
+    });
+  }
 }

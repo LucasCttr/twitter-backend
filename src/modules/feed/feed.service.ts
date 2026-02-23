@@ -12,28 +12,4 @@ export class FeedService {
     this.gateway = gateway;
   }
 
-  notifyNewTweets(newTweets: { id: string; createdAt: string }[]) {
-    if (this.gateway) {
-      this.gateway.notifyNewTweets(newTweets);
-    }
-  }
-
-  async getUnreadCount(userId: string, lastSeen: Date): Promise<number> {
-    return await this.prisma.tweet.count({
-      where: {
-        authorId: { not: userId },
-        createdAt: { gt: lastSeen }, // Usa la última fecha de recarga del feed
-      },
-    });
-  }
-
-  notifyUnreadCount(userId: string, count: number) {
-    if (!userId) {
-      console.log("notifyUnreadCount: userId es undefined");
-      return;
-    }
-    if (this.gateway) {
-      this.gateway.emitToUser(userId, "unread_count", { count });
-    }
-  }
 }

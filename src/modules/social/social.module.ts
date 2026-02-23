@@ -1,10 +1,15 @@
+
 import { Module } from '@nestjs/common';
-import { UserService } from '../users/user.service';
-import { UserController } from '../users/user.controller';
+import { BullModule } from '@nestjs/bull';
+import { SocialService } from './social.service';
+import { SocialController } from './social.controller';
 
 @Module({
-    providers: [UserService],
-    controllers: [UserController],
+    imports: [BullModule.registerQueue({ name: 'like-notify' }),
+        BullModule.registerQueue({ name: 'follow-notify' })
+    ],
+    providers: [SocialService],
+    controllers: [SocialController],
+    exports: [SocialService],
 })
-export class SocialModule {
-}
+export class SocialModule {}

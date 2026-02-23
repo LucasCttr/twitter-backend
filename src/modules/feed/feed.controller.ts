@@ -19,15 +19,18 @@ export class FeedController {
   getFeed(@CurrentUser() user: JwtPayload, @Query() query: FeedQueryDto) {
     return this.tweetsService.getFeed(user.id, query.take, query.cursor);
   }
-  
-  @Post("notify")
-  notify(@Body() body: { ids: string[] }) {
-    const newTweets = body.ids.map(id => ({
-      id,
-      createdAt: new Date().toISOString()
-    }));
-    this.feedService.notifyNewTweets(newTweets);
-    return { ok: true };
-  }
+    // Endpoint para contar tweets nuevos
+    @Get("new-count")
+    @UseGuards(JwtAuthGuard)
+    async getNewTweetsCount(
+      @CurrentUser() user: JwtPayload,
+      @Query("lastSeen") lastSeen: string
+    ) {
+      // lastSeen puede ser una fecha ISO o un tweetId
+      // Aquí asumimos fecha ISO
+      const count = await this.tweetsService.countNewTweets(user.id, lastSeen);
+      return { newTweetsCount: count };
+    }
+
 }
 

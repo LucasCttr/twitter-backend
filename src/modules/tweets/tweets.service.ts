@@ -17,9 +17,28 @@ import { Queue } from 'bull';
 @Injectable()
 export class TweetsService {
   constructor(
-    private readonly prisma: PrismaService,
-    @InjectQueue('tweet-notify') private readonly notifyQueue: Queue,
+    private readonly prisma: PrismaService
   ) {}
+
+    // Contador de tweets nuevos desde lastSeen
+    async countNewTweets(userId: string, lastSeen: string): Promise<number> {
+      // Obtener los seguidos
+      const following = await this.prisma.follow.findMany({
+        where: { followerId: userId },
+        select: { followingId: true },
+      });
+      const ids = following.map(f => f.followingId);
+      ids.push(userId);
+      // Contar tweets creados después de lastSeen
+      const count = await this.prisma.tweet.count({
+        where: {
+          authorId: { in: ids },
+          createdAt: { gt: new Date(lastSeen) },
+          deletedAt: null,
+        },
+      });
+      return count;
+    }
 
   async create(
     authorId: string,
@@ -48,12 +67,6 @@ export class TweetsService {
       },
     });
 
-    // enqueue durable job for notification/fan-out
-    await this.notifyQueue.add('notify', { 
-      tweet: { id: tweet.id, createdAt: tweet.createdAt },
-      userId: authorId,
-      lastSeen:lastSeenDate, // <-- Agrega aquí la fecha de última recarga del feed    SEGUIR
-    });
     return new TweetResponseDto(tweet);
   }
 

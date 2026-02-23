@@ -5,7 +5,6 @@ import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: 'tweet-notify' }),
   ],
   providers: [TweetsService],
   controllers: [TweetsController],
