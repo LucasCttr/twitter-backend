@@ -5,9 +5,7 @@ import { SocialController } from "./social.controller";
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: "like-notify" }),
-    BullModule.registerQueue({ name: "follow-notify" }),
-    BullModule.registerQueue({ name: "retweet-notify" }),
+    BullModule.registerQueue({ name: "social-notify" }),
   ],
   providers: [SocialService],
   controllers: [SocialController],

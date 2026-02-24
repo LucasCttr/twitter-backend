@@ -23,3 +23,8 @@ socket.on("followNotification", (data) => {
 socket.on("retweetNotification", (data) => {
   console.log("Recibido retweetNotification:", data);
 });
+
+// Escuchar eventos de notificación de reply
+socket.on("replyNotification", (data) => {
+  console.log("Recibido replyNotification:", data);
+});

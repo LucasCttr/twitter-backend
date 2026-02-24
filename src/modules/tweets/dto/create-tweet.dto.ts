@@ -1,5 +1,9 @@
+import { IsOptional, IsString, IsUUID, ValidateIf, IsNotEmpty } from 'class-validator';
+
 export class CreateTweetDto {
-  content!: string;
-  parentId?: string;
-  retweetOfId?: string;
+  @IsString()
+  @IsNotEmpty()
+  content?: string;
+  
 }
+

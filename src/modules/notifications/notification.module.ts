@@ -2,19 +2,15 @@ import { Module } from "@nestjs/common";
 import { BullModule } from '@nestjs/bull';
 import { TweetsModule } from '../tweets/tweets.module';
 import { FeedModule } from '../feed/feed.module';
-import { LikeNotifyProcessor } from "./processors/like-notify.processor";
-import { QueueDebugService } from './test/queue-debug.service';
-import { FollowNotifyProcessor } from "./processors/follow-notify.processor";
-import { RetweetNotifyProcessor } from "./processors/retweet-notify.processor";
+import { SocialNotifyProcessor } from "./processors/social-notify.processor";
+import { TweetNotifyProcessor } from "./processors/tweet-notify.processor";
 
 @Module({
   imports: [
     TweetsModule,
-    BullModule.registerQueue({ name: 'like-notify' }),
-    BullModule.registerQueue({ name: 'follow-notify' }),
     FeedModule,
   ],
   controllers: [],
-  providers: [ LikeNotifyProcessor, FollowNotifyProcessor, RetweetNotifyProcessor],
+  providers: [ SocialNotifyProcessor, TweetNotifyProcessor],
 })
 export class NotificationsModule {}

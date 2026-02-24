@@ -7,7 +7,7 @@ import { CurrentUser } from "../../utils/current-user.decorator.js";
 import { PaginationDto } from "../../utils/pagination.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 
-@Controller("tweets")
+@Controller("tweet")
 export class TweetsController {
   constructor(private readonly tweetsService: TweetsService) {}
 
@@ -31,7 +31,7 @@ export class TweetsController {
 
 
   // RETWEET
-  @Post('retweet/:tweetId')
+  @Post('/:tweetId/retweet')
   @UseGuards(JwtAuthGuard)
   retweet(
     @CurrentUser() user: JwtPayload,
@@ -40,7 +40,7 @@ export class TweetsController {
     return this.tweetsService.retweet(user.id, tweetId)
   }
 
-  @Delete('retweet/:tweetId')
+  @Delete('/:tweetId/retweet')
   @UseGuards(JwtAuthGuard)
   undoRetweet(
     @CurrentUser() user: JwtPayload,
@@ -50,7 +50,7 @@ export class TweetsController {
   }
 
   // REPLY
-  @Post('reply/:tweetId')
+  @Post(':tweetId/reply')
   @UseGuards(JwtAuthGuard)
   reply(
     @CurrentUser() user: JwtPayload,
@@ -60,5 +60,14 @@ export class TweetsController {
     return this.tweetsService.reply(user.id, tweetId, dto)
   }
 
-  
+  @Delete(':tweetId/reply')
+  @UseGuards(JwtAuthGuard)
+  deleteReply(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+  ) {
+    return this.tweetsService.deleteReply(user.id, tweetId)
+  }
+
+
 }

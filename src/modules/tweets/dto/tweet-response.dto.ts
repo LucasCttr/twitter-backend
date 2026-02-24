@@ -3,16 +3,32 @@ import { Tweet } from "@prisma/client";
 export class TweetResponseDto {
   id!: string;
   content: string | null;
+  createdAt!: Date;
   author?: {
     id?: string;
     name?: string;
   };
-  parentId?: string;
+  retweetOfId: string | null;
+  parentId: string | null;
+  parent?: TweetResponseDto;
   retweetOf?: TweetResponseDto;
-  createdAt!: Date;
 
-  constructor(tweet: any) {
+  // El constructor acepta un objeto de tweet con relaciones anidadas y opciones para controlar su inclusión
+  constructor(
+    tweet: any,
+    opts?: { includeParent?: boolean; includeRetweet?: boolean },
+  ) {
+    // Opciones para controlar la inclusión de relaciones anidadas
+    const includeParent = opts?.includeParent ?? true;
+    const includeRetweet = opts?.includeRetweet ?? true;
+
+    // Asignación de campos básicos
     this.id = tweet.id;
+    // Colocar ids de relaciones justo después del id
+    this.parentId = tweet.parentId ?? null;
+    this.retweetOfId = tweet.retweetOfId ?? null;
+
+    // Campos principales
     this.content = tweet.content ?? null;
     this.author = tweet.author
       ? {
@@ -20,10 +36,15 @@ export class TweetResponseDto {
           name: tweet.author.name ?? undefined,
         }
       : undefined;
-    this.parentId = tweet.parentId ?? undefined;
-    this.createdAt = tweet.createdAt;
-    if (tweet.retweetOf) {
-      this.retweetOf = new TweetResponseDto(tweet.retweetOf);
+
+    // Relaciones completas opcionales
+    if (includeParent && tweet.parent) {
+      this.parent = new TweetResponseDto(tweet.parent, opts);
     }
+    if (includeRetweet && tweet.retweetOf) {
+      this.retweetOf = new TweetResponseDto(tweet.retweetOf, opts);
+    }
+
+    this.createdAt = tweet.createdAt;
   }
 }

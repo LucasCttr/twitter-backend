@@ -15,10 +15,10 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
 @Injectable()
-export class TweetsService {
+  export class TweetsService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue("retweet-notify") private readonly retweetNotifyQueue: Queue
+    @InjectQueue("tweet-notify") private readonly tweetNotifyQueue: Queue,
   ) {}
 
     // Contador de tweets nuevos desde lastSeen
@@ -45,10 +45,20 @@ export class TweetsService {
     authorId: string,
     data: CreateTweetDto,
   ): Promise<TweetResponseDto> {
+    const created = await this.createTweet(authorId, {
+      content: data.content,
+    });
+
+    return new TweetResponseDto(created);
+  }
+
+  // Método central que crea tweets (normal, reply o retweet).
+  private async createTweet(
+    authorId: string,
+    data: { content?: string; parentId?: string; retweetOfId?: string },
+  ) {
     if (data.parentId && data.retweetOfId) {
-      throw new BadRequestException(
-        "Cannot reply and retweet at the same time",
-      );
+      throw new BadRequestException("Cannot reply and retweet at the same time");
     }
 
     const tweet = await this.prisma.tweet.create({
@@ -65,13 +75,33 @@ export class TweetsService {
             name: true,
           },
         },
+        retweetOf: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        parent: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    return new TweetResponseDto(tweet);
+    return tweet;
   }
 
-  async findById(id: string): Promise<TweetResponseDto> {
+  async findById(id: string, includeRelated = true): Promise<TweetResponseDto> {
     const tweet = await this.prisma.tweet.findUnique({
       where: { id },
       include: {
@@ -91,6 +121,16 @@ export class TweetsService {
             },
           },
         },
+        parent: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -98,10 +138,10 @@ export class TweetsService {
       throw new BadRequestException("Tweet not found");
     }
 
-    return new TweetResponseDto(tweet);
+    return new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
   }
 
-  async getByPagination(pagination: TweetFilterDto) {
+  async getByPagination(pagination: TweetFilterDto, includeRelated = true) {
     // Asegura que page y limit sean números
     const page = pagination.page;
     const limit = pagination.limit;
@@ -143,6 +183,16 @@ export class TweetsService {
               },
             },
           },
+          parent: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -152,7 +202,7 @@ export class TweetsService {
     ]);
 
     return new PaginatedResult(
-      tweets.map((t) => new TweetResponseDto(t)),
+      tweets.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })),
       total,
       page,
       limit,
@@ -176,30 +226,7 @@ export class TweetsService {
 
   // RETWEET
   async retweet(userId: string, tweetId: string) {
-    const retweet = await this.prisma.tweet.create({
-      data: {
-        authorId: userId,
-        retweetOfId: tweetId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        retweetOf: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const created = await this.createTweet(userId, { retweetOfId: tweetId });
 
     // Notificar al autor del tweet original
     const original = await this.prisma.tweet.findUnique({
@@ -215,14 +242,14 @@ export class TweetsService {
         createdAt: new Date().toISOString(),
       };
 
-      await this.retweetNotifyQueue.add("retweet-notify", payload, {
+      await this.tweetNotifyQueue.add("retweet-notify", payload, {
         attempts: 3,
         backoff: { type: "exponential", delay: 1000 },
         removeOnComplete: true,
       });
     }
 
-    return new TweetResponseDto(retweet);
+    return new TweetResponseDto(created);
   }
 
   async undoRetweet(userId: string, tweetId: string) {
@@ -242,39 +269,57 @@ export class TweetsService {
     });
   }
 
+
   // REPLY
-  async reply(userId: string, tweetId: string, data: CreateTweetDto) {
-    const reply = await this.prisma.tweet.create({
-      data: {
-        content: data.content,
+  async reply(userId: string, parentId: string, dto: CreateTweetDto) {
+    const created = await this.createTweet(userId, {
+      content: dto.content,
+      parentId,
+    });
+
+    // Notificar al autor del tweet original
+    const original = await this.prisma.tweet.findUnique({
+      where: { id: parentId },
+      select: { authorId: true },
+    });
+
+    if (original && original.authorId !== userId) {
+      const payload = {
+        userId: original.authorId,
+        tweetId: parentId,
+        likerId: userId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await this.tweetNotifyQueue.add("reply-notify", payload, {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 },
+        removeOnComplete: true,
+      });
+    }
+
+    return new TweetResponseDto(created);
+  }
+
+  async deleteReply(userId: string, parentId: string) {
+    const reply = await this.prisma.tweet.findFirst({
+      where: {
         authorId: userId,
-        parentId: tweetId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        parent: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
+        parentId,
       },
     });
 
-    return new TweetResponseDto(reply);
+    if (!reply) {
+      throw new Error("Reply not found");
+    }
+
+    return this.prisma.tweet.delete({
+      where: { id: reply.id },
+    });
   }
 
 
-  async getFeed(userId: string, take = 20, cursor?: string) {
+  async getFeed(userId: string, take = 20, cursor?: string, includeRelated = false) {
     const following = await this.prisma.follow.findMany({
       where: { followerId: userId },
       select: { followingId: true },
@@ -304,6 +349,16 @@ export class TweetsService {
             },
           },
         },
+        parent: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: take + 1, // 👈 importante
@@ -314,6 +369,6 @@ export class TweetsService {
     });
 
     // Mapeo a TweetResponseDto y construcción de FeedResponseDto
-    return new FeedResponseDto(tweets.map((t) => new TweetResponseDto(t)), take);
+    return new FeedResponseDto(tweets.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })), take);
   }
 }

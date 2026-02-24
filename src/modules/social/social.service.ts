@@ -13,9 +13,7 @@ import { FollowNotifyDto } from "../notifications/dto/follow-notify.dto";
 export class SocialService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue("like-notify") private readonly likeNotifyQueue: Queue,
-    @InjectQueue("follow-notify") private readonly followNotifyQueue: Queue,
-    @InjectQueue("retweet-notify") private readonly retweetNotifyQueue: Queue,
+    @InjectQueue("social-notify") private readonly socialNotifyQueue: Queue,
   ) {}
 
   async followUser(userId: string, targetUserId: string) {
@@ -49,7 +47,7 @@ export class SocialService {
       createdAt: new Date().toISOString(),
     };
 
-    await this.followNotifyQueue.add("follow-notify", payload, {
+    await this.socialNotifyQueue.add("follow-notify", payload, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },
       removeOnComplete: true,
@@ -106,7 +104,7 @@ export class SocialService {
       createdAt: new Date().toISOString(),
     };
 
-    await this.likeNotifyQueue.add("like-notify", payload, {
+    await this.socialNotifyQueue.add("like-notify", payload, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },
       removeOnComplete: true,
