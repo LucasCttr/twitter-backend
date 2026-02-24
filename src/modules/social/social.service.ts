@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
@@ -11,6 +15,7 @@ export class SocialService {
     private readonly prisma: PrismaService,
     @InjectQueue("like-notify") private readonly likeNotifyQueue: Queue,
     @InjectQueue("follow-notify") private readonly followNotifyQueue: Queue,
+    @InjectQueue("retweet-notify") private readonly retweetNotifyQueue: Queue,
   ) {}
 
   async followUser(userId: string, targetUserId: string) {
@@ -64,7 +69,7 @@ export class SocialService {
     });
 
     if (!existingFollow) {
-      throw new NotFoundException('Follow relation not found');
+      throw new NotFoundException("Follow relation not found");
     }
 
     return this.prisma.follow.delete({
@@ -118,32 +123,6 @@ export class SocialService {
           tweetId,
         },
       },
-    });
-  }
-
-  async retweet(userId: string, tweetId: string) {
-    return this.prisma.tweet.create({
-      data: {
-        authorId: userId,
-        retweetOfId: tweetId,
-      },
-    });
-  }
-
-  async undoRetweet(userId: string, tweetId: string) {
-    const retweet = await this.prisma.tweet.findFirst({
-      where: {
-        authorId: userId,
-        retweetOfId: tweetId,
-      },
-    });
-
-    if (!retweet) {
-      throw new Error("Retweet not found");
-    }
-
-    return this.prisma.tweet.delete({
-      where: { id: retweet.id },
     });
   }
 }

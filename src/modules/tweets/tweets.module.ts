@@ -4,7 +4,7 @@ import { TweetsController } from './tweets.controller.js';
 import { BullModule } from '@nestjs/bull';
 
 @Module({
-  imports: [
+  imports: [ BullModule.registerQueue({ name: 'retweet-notify' })
   ],
   providers: [TweetsService],
   controllers: [TweetsController],

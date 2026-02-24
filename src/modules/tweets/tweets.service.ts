@@ -17,7 +17,8 @@ import { Queue } from 'bull';
 @Injectable()
 export class TweetsService {
   constructor(
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    @InjectQueue("retweet-notify") private readonly retweetNotifyQueue: Queue
   ) {}
 
     // Contador de tweets nuevos desde lastSeen
@@ -73,7 +74,24 @@ export class TweetsService {
   async findById(id: string): Promise<TweetResponseDto> {
     const tweet = await this.prisma.tweet.findUnique({
       where: { id },
-      include: {},
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        retweetOf: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!tweet) {
@@ -115,6 +133,16 @@ export class TweetsService {
               name: true,
             },
           },
+          retweetOf: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -145,6 +173,106 @@ export class TweetsService {
     });
     return { message: "Tweet deleted successfully" };
   }
+
+  // RETWEET
+  async retweet(userId: string, tweetId: string) {
+    const retweet = await this.prisma.tweet.create({
+      data: {
+        authorId: userId,
+        retweetOfId: tweetId,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        retweetOf: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Notificar al autor del tweet original
+    const original = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: { authorId: true },
+    });
+
+    if (original && original.authorId !== userId) {
+      const payload = {
+        userId: original.authorId,
+        tweetId,
+        likerId: userId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await this.retweetNotifyQueue.add("retweet-notify", payload, {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 },
+        removeOnComplete: true,
+      });
+    }
+
+    return new TweetResponseDto(retweet);
+  }
+
+  async undoRetweet(userId: string, tweetId: string) {
+    const retweet = await this.prisma.tweet.findFirst({
+      where: {
+        authorId: userId,
+        retweetOfId: tweetId,
+      },
+    });
+
+    if (!retweet) {
+      throw new Error("Retweet not found");
+    }
+
+    return this.prisma.tweet.delete({
+      where: { id: retweet.id },
+    });
+  }
+
+  // REPLY
+  async reply(userId: string, tweetId: string, data: CreateTweetDto) {
+    const reply = await this.prisma.tweet.create({
+      data: {
+        content: data.content,
+        authorId: userId,
+        parentId: tweetId,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        parent: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return new TweetResponseDto(reply);
+  }
+
 
   async getFeed(userId: string, take = 20, cursor?: string) {
     const following = await this.prisma.follow.findMany({

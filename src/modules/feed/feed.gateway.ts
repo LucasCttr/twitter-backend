@@ -41,7 +41,7 @@ export class FeedGateway implements OnGatewayConnection, OnGatewayInit {
   private userSockets: Map<string, string> = new Map();
 
   handleConnection(client: Socket) {
-    const userId = client.handshake.auth.userId as string; // <-- Cambia aquí
+    const userId = client.handshake.auth.userId as string; 
     console.log("Conexión recibida:", userId, client.id);
     if (userId) {
       this.userSockets.set(userId, client.id);

@@ -28,4 +28,37 @@ export class TweetsController {
   delete(@Param("id") id: string) {
     return this.tweetsService.delete(id);
   }
+
+
+  // RETWEET
+  @Post('retweet/:tweetId')
+  @UseGuards(JwtAuthGuard)
+  retweet(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+  ) {
+    return this.tweetsService.retweet(user.id, tweetId)
+  }
+
+  @Delete('retweet/:tweetId')
+  @UseGuards(JwtAuthGuard)
+  undoRetweet(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+  ) {
+    return this.tweetsService.undoRetweet(user.id, tweetId)
+  }
+
+  // REPLY
+  @Post('reply/:tweetId')
+  @UseGuards(JwtAuthGuard)
+  reply(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+    @Body() dto: CreateTweetDto,
+  ) {
+    return this.tweetsService.reply(user.id, tweetId, dto)
+  }
+
+  
 }

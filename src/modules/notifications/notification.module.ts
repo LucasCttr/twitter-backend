@@ -5,6 +5,7 @@ import { FeedModule } from '../feed/feed.module';
 import { LikeNotifyProcessor } from "./processors/like-notify.processor";
 import { QueueDebugService } from './test/queue-debug.service';
 import { FollowNotifyProcessor } from "./processors/follow-notify.processor";
+import { RetweetNotifyProcessor } from "./processors/retweet-notify.processor";
 
 @Module({
   imports: [
@@ -14,6 +15,6 @@ import { FollowNotifyProcessor } from "./processors/follow-notify.processor";
     FeedModule,
   ],
   controllers: [],
-  providers: [ LikeNotifyProcessor, FollowNotifyProcessor],
+  providers: [ LikeNotifyProcessor, FollowNotifyProcessor, RetweetNotifyProcessor],
 })
 export class NotificationsModule {}

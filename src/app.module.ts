@@ -11,6 +11,7 @@ import { SocialController } from './modules/social/social.controller.js';
 import { SocialModule } from './modules/social/social.module.js';
 import { FeedModule } from './modules/feed/feed.module';
 import { NotificationsModule } from './modules/notifications/notification.module.js';
+import { MessagesModule } from './modules/messages/messages.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationsModule } from './modules/notifications/notification.module
         port: Number(process.env.REDIS_PORT) ?? 6379,
       },
     }),
+    MessagesModule,
   ],
   // controllers: [UserController, SocialController],
   // providers: [UserService],

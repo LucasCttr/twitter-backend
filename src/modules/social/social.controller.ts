@@ -48,21 +48,4 @@ export class SocialController {
   ) {
     return this.socialService.unlike(user.id, tweetId)
   }
-
-  // RETWEET
-  @Post('retweet/:tweetId')
-  retweet(
-    @CurrentUser() user: JwtPayload,
-    @Param('tweetId') tweetId: string,
-  ) {
-    return this.socialService.retweet(user.id, tweetId)
-  }
-
-  @Delete('retweet/:tweetId')
-  undoRetweet(
-    @CurrentUser() user: JwtPayload,
-    @Param('tweetId') tweetId: string,
-  ) {
-    return this.socialService.undoRetweet(user.id, tweetId)
-  }
 }
