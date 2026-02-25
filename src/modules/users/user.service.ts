@@ -5,6 +5,8 @@ import { UserResponseDto } from "./dto/user-response.dto.js";
 import { UserSummaryDto } from "./dto/user-summary.dto.js";
 import { PaginatedResponse } from "../../utils/pagination-respone.dto.js";
 import { CursorPaginationDto } from '../../utils/cursor-pagination.dto.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -208,6 +210,29 @@ export class UserService {
    return new PaginatedResponse(mapped, limit, nextCursor);
  }
 
+  async update(userId: string, dto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) {
+      throw new Error('User not found');
+    }
+
+    const data: any = {};
+    if (dto.name) data.name = dto.name;
+    if (dto.password) data.password = await bcrypt.hash(dto.password, 10);
+
+    if (Object.keys(data).length === 0) {
+      return { id: user.id, name: user.name, email: user.email };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, name: true, email: true },
+    });
+
+    return updated;
+  }
+
   async getFollowing(userId: string, pagination: CursorPaginationDto | undefined, currentUserId: string) {
    const limit = pagination?.limit ?? 20;
    const findOptions: any = {
@@ -223,7 +248,6 @@ export class UserService {
      findOptions.cursor = { id: pagination.cursor };
      findOptions.skip = 1;
    }
-
    const users = await this.prisma.user.findMany(findOptions);
    let nextCursor: string | null = null;
    let returned = users;

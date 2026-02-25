@@ -3,12 +3,15 @@ import {
   Get,
   Param,
   Post,
+  Patch,
+  Body,
   Query,
   UseGuards,
   ParseUUIDPipe,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { UserFilterDto } from "./dto/user-filter.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guards";
 import { TweetsService } from "../tweets/tweets.service";
 import { TweetFilterDto } from "../tweets/dto/tweet-filter.dto";
@@ -27,6 +30,11 @@ export class UserController {
   @Get()
   getByPagination(@Query() filter: UserFilterDto, @CurrentUser() user: JwtPayload) {
     return this.userService.getByPagination(filter, user?.id);
+  }
+
+  @Patch('me')
+  updateMe(@Body() dto: UpdateUserDto, @CurrentUser() user: JwtPayload) {
+    return this.userService.update(user.id, dto);
   }
 
   @Get(":id/tweets")
