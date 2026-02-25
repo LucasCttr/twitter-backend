@@ -54,7 +54,7 @@ import { Queue } from 'bull';
     return new TweetResponseDto(created);
   }
 
-  // Método central que crea tweets (normal, reply o retweet).
+  // Método central que crea tweets (normal, reply o retweet) y devuelve el DTO con relaciones anidadas opcionales
   private async createTweet(
     authorId: string,
     data: { content?: string; parentId?: string; retweetOfId?: string },
@@ -124,6 +124,7 @@ import { Queue } from 'bull';
     return tweet;
   }
 
+  // Obtiene un tweet por id, con opciones para incluir relaciones anidadas y paginar replies 
   async findById(
     id: string,
     includeRelated = true,
@@ -223,6 +224,7 @@ import { Queue } from 'bull';
     return dto;
   }
 
+  // Cursor-based pagination (no offset) con filtros opcionales
   async getTweetsByPagination(pagination: TweetFilterDto, includeRelated = true) {
     // Cursor-based pagination (no offset)
     const limit = pagination.limit ?? 20;
@@ -308,6 +310,7 @@ import { Queue } from 'bull';
     );
   }
 
+  // Soft delete: marca el tweet como eliminado sin borrarlo de la base de datos
   async delete(id: string, authorId: string) {
     const tweet = await this.prisma.tweet.findUnique({ where: { id } });
     if (!tweet) {
@@ -326,7 +329,7 @@ import { Queue } from 'bull';
     return { message: "Tweet deleted successfully" };
   }
 
-  // undo a retweet created by `userId` that points to `tweetId`
+  // borra un retweet (que es un tweet con retweetOfId) donde `retweetOfId` es el id del tweet original y `userId` es el autor del retweet
   async undoRetweet(userId: string, tweetId: string) {
     const retweet = await this.prisma.tweet.findFirst({
       where: {
@@ -342,7 +345,7 @@ import { Queue } from 'bull';
     return this.delete(retweet.id, userId);
   }
 
-  // delete a reply (child tweet) where `parentId` is the replied-to tweet
+  // borra un comentario (child tweet) donde `parentId` es el id del tweet padre y `userId` es el autor del comentario
   async deleteReply(userId: string, parentId: string) {
     const reply = await this.prisma.tweet.findFirst({
       where: {
@@ -417,7 +420,7 @@ import { Queue } from 'bull';
     return new TweetResponseDto(created);
   }
 
-
+  // Obtiene tweets de un usuario y sus seguidos (feed)
   async getFeed(userId: string, take = 20, cursor?: string, includeRelated = false) {
     const following = await this.prisma.follow.findMany({
       where: { followerId: userId },
