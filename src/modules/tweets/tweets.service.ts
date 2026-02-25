@@ -187,15 +187,9 @@ import { Queue } from 'bull';
     }
 
     const dto = new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
-    // Ensure repliesCount excludes soft-deleted replies (deletedAt != null)
-    try {
-      const realRepliesCount = await this.prisma.tweet.count({ where: { parentId: id, deletedAt: null } });
-      dto.repliesCount = realRepliesCount;
-    } catch (e) {
-      // if counting fails, keep whatever _count provided
-    }
+    // Usa Prisma `_count` (incluye soft-deleted items) — DTO lee `_count` directamente
 
-    // Fetch level-1 replies with pagination
+    // Fetch level-1 replies con pagination
     const limit = repliesPagination?.limit ?? 20;
     const take = limit + 1;
     const replyFindOptions: any = {
@@ -307,29 +301,11 @@ import { Queue } from 'bull';
       returned = tweets.slice(0, limit);
     }
 
-    // Batch-count replies para evitar N+1
-    const ids = returned.map((t) => t.id);
-    const replyCountMap = new Map<string, number>();
-    const chunkSize = 500;
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      const chunk = ids.slice(i, i + chunkSize);
-      const groups = await this.prisma.tweet.groupBy({
-        by: ["parentId"],
-        where: { parentId: { in: chunk }, deletedAt: null },
-        _count: { _all: true },
-      });
-      for (const g of groups) {
-        if (g.parentId) replyCountMap.set(g.parentId as string, g._count._all);
-      }
-    }
-
-    const dtos = returned.map((t) => {
-      const dto = new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated });
-      dto.repliesCount = replyCountMap.get(t.id) ?? 0;
-      return dto;
-    });
-
-    return new PaginatedResponse(dtos, limit, nextCursor);
+    return new PaginatedResponse(
+      returned.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })),
+      limit,
+      nextCursor,
+    );
   }
 
   async delete(id: string, authorId: string) {
@@ -499,28 +475,6 @@ import { Queue } from 'bull';
     });
 
     // Mapeo a TweetResponseDto y construcción de FeedResponseDto
-    // Batch-count replies for feed tweets to avoid N+1
-    const tweetIds = tweets.map((t) => t.id);
-    const replyCountMap = new Map<string, number>();
-    const chunkSize = 500;
-    for (let i = 0; i < tweetIds.length; i += chunkSize) {
-      const chunk = tweetIds.slice(i, i + chunkSize);
-      const groups = await this.prisma.tweet.groupBy({
-        by: ["parentId"],
-        where: { parentId: { in: chunk }, deletedAt: null },
-        _count: { _all: true },
-      });
-      for (const g of groups) {
-        if (g.parentId) replyCountMap.set(g.parentId as string, g._count._all);
-      }
-    }
-
-    const dtos = tweets.map((t) => {
-      const dto = new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated });
-      dto.repliesCount = replyCountMap.get(t.id) ?? 0;
-      return dto;
-    });
-
-    return new FeedResponseDto(dtos, take);
+    return new FeedResponseDto(tweets.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })), take);
   }
 }
