@@ -1,6 +1,6 @@
-import { PaginationDto } from "../../../utils/pagination.dto";
+import { CursorPaginationDto } from "../../../utils/cursor-pagination.dto";
 
-export class UserFilterDto extends PaginationDto {
+export class UserFilterDto extends CursorPaginationDto {
     name?: string;
     email?: string;
 }

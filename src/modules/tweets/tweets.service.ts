@@ -9,7 +9,7 @@ import { PrismaService } from "../../database/prisma.service.js";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetResponseDto } from "./dto/tweet-response.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
-import { PaginatedResult } from "../../utils/pagination.dto.js";
+import { PaginatedResponse } from "../../utils/pagination-respone.dto.js";
 import { FeedResponseDto } from "../feed/dto/feed-query.dto.js";
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -141,10 +141,9 @@ import { Queue } from 'bull';
     return new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
   }
 
-  async getByPagination(pagination: TweetFilterDto, includeRelated = true) {
-    // Asegura que page y limit sean números
-    const page = pagination.page;
-    const limit = pagination.limit;
+  async getTweetsByPagination(pagination: TweetFilterDto, includeRelated = true) {
+    // Cursor-based pagination (no offset)
+    const limit = pagination.limit ?? 20;
     const deletedAt = null; // Solo tweets no eliminados
 
     // Construye el objeto where solo con filtros válidos
@@ -163,9 +162,14 @@ import { Queue } from 'bull';
     }
     where.deletedAt = deletedAt;
 
-    const [tweets, total] = await this.prisma.$transaction([
-      this.prisma.tweet.findMany({
-        where,
+    const include = {
+      author: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      retweetOf: {
         include: {
           author: {
             select: {
@@ -173,39 +177,45 @@ import { Queue } from 'bull';
               name: true,
             },
           },
-          retweetOf: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-          parent: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+        },
+      },
+      parent: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.tweet.count({ where }),
-    ]);
+      },
+    };
 
-    return new PaginatedResult(
-      tweets.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })),
-      total,
-      page,
+    const findOptions: any = {
+      where,
+      include,
+      orderBy: { createdAt: "desc" },
+      take: limit + 1,
+    };
+
+    if (pagination.cursor) {
+      findOptions.cursor = { id: pagination.cursor };
+      findOptions.skip = 1;
+    }
+
+    const tweets = await this.prisma.tweet.findMany(findOptions);
+
+    let nextCursor: string | null = null;
+    let returned = tweets;
+    if (tweets.length > limit) {
+      nextCursor = tweets[limit].id;
+      returned = tweets.slice(0, limit);
+    }
+
+    return new PaginatedResponse(
+      returned.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })),
       limit,
+      nextCursor,
     );
   }
 

@@ -1,9 +1,20 @@
-import { PaginationDto } from "../../../utils/pagination.dto";
+import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { CursorPaginationDto } from '../../../utils/cursor-pagination.dto';
 
-export class TweetFilterDto extends PaginationDto {
+export class TweetFilterDto extends CursorPaginationDto {
+  @IsOptional()
+  @IsString()
   content?: string;
-  authorId?: string;
-  parentId?: string;
-  retweetOfId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  authorId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  retweetOfId?: string;
 }

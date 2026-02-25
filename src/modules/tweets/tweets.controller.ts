@@ -4,7 +4,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetsService } from "./tweets.service.js";
 import { CurrentUser } from "../../utils/current-user.decorator.js";
-import { PaginationDto } from "../../utils/pagination.dto.js";
+import { CursorPaginationDto } from "../../utils/cursor-pagination.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 
 @Controller("tweet")
@@ -20,7 +20,7 @@ export class TweetsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   getByPagination(@Query() pagination: TweetFilterDto) {
-    return this.tweetsService.getByPagination(pagination);
+    return this.tweetsService.getTweetsByPagination(pagination);
   }
 
   @Delete(":id")
