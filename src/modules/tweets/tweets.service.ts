@@ -307,11 +307,29 @@ import { Queue } from 'bull';
       returned = tweets.slice(0, limit);
     }
 
-    return new PaginatedResponse(
-      returned.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })),
-      limit,
-      nextCursor,
-    );
+    // Batch-count replies para evitar N+1
+    const ids = returned.map((t) => t.id);
+    const replyCountMap = new Map<string, number>();
+    const chunkSize = 500;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      const groups = await this.prisma.tweet.groupBy({
+        by: ["parentId"],
+        where: { parentId: { in: chunk }, deletedAt: null },
+        _count: { _all: true },
+      });
+      for (const g of groups) {
+        if (g.parentId) replyCountMap.set(g.parentId as string, g._count._all);
+      }
+    }
+
+    const dtos = returned.map((t) => {
+      const dto = new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated });
+      dto.repliesCount = replyCountMap.get(t.id) ?? 0;
+      return dto;
+    });
+
+    return new PaginatedResponse(dtos, limit, nextCursor);
   }
 
   async delete(id: string, authorId: string) {
@@ -430,12 +448,12 @@ import { Queue } from 'bull';
       select: { followingId: true },
     });
 
-    const ids = following.map((f) => f.followingId);
-    ids.push(userId);
+    const authorIds = following.map((f) => f.followingId);
+    authorIds.push(userId);
 
     const tweets = await this.prisma.tweet.findMany({
       where: {
-        authorId: { in: ids },
+        authorId: { in: authorIds },
       },
       include: {
         author: {
@@ -481,6 +499,28 @@ import { Queue } from 'bull';
     });
 
     // Mapeo a TweetResponseDto y construcción de FeedResponseDto
-    return new FeedResponseDto(tweets.map((t) => new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated })), take);
+    // Batch-count replies for feed tweets to avoid N+1
+    const tweetIds = tweets.map((t) => t.id);
+    const replyCountMap = new Map<string, number>();
+    const chunkSize = 500;
+    for (let i = 0; i < tweetIds.length; i += chunkSize) {
+      const chunk = tweetIds.slice(i, i + chunkSize);
+      const groups = await this.prisma.tweet.groupBy({
+        by: ["parentId"],
+        where: { parentId: { in: chunk }, deletedAt: null },
+        _count: { _all: true },
+      });
+      for (const g of groups) {
+        if (g.parentId) replyCountMap.set(g.parentId as string, g._count._all);
+      }
+    }
+
+    const dtos = tweets.map((t) => {
+      const dto = new TweetResponseDto(t, { includeParent: includeRelated, includeRetweet: includeRelated });
+      dto.repliesCount = replyCountMap.get(t.id) ?? 0;
+      return dto;
+    });
+
+    return new FeedResponseDto(dtos, take);
   }
 }
