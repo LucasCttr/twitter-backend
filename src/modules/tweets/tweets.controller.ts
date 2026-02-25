@@ -25,8 +25,8 @@ export class TweetsController {
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
-  delete(@Param("id") id: string) {
-    return this.tweetsService.delete(id);
+  delete(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.tweetsService.delete(id, user.id);
   }
 
 

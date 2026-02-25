@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Get,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Post,
@@ -219,13 +220,16 @@ import { Queue } from 'bull';
     );
   }
 
-  async delete(id: string) {
+  async delete(id: string, authorId: string) {
     const tweet = await this.prisma.tweet.findUnique({ where: { id } });
     if (!tweet) {
       throw new NotFoundException("Tweet not found");
     }
     if (tweet.deletedAt) {
       throw new BadRequestException("Tweet already deleted");
+    }
+    if (tweet.authorId !== authorId) {
+      throw new ForbiddenException("You are not allowed to delete this tweet");
     }
     await this.prisma.tweet.update({
       where: { id },
@@ -234,6 +238,37 @@ import { Queue } from 'bull';
     return { message: "Tweet deleted successfully" };
   }
 
+  // undo a retweet created by `userId` that points to `tweetId`
+  async undoRetweet(userId: string, tweetId: string) {
+    const retweet = await this.prisma.tweet.findFirst({
+      where: {
+        authorId: userId,
+        retweetOfId: tweetId,
+      },
+    });
+
+    if (!retweet) {
+      throw new NotFoundException("Retweet not found");
+    }
+
+    return this.delete(retweet.id, userId);
+  }
+
+  // delete a reply (child tweet) where `parentId` is the replied-to tweet
+  async deleteReply(userId: string, parentId: string) {
+    const reply = await this.prisma.tweet.findFirst({
+      where: {
+        authorId: userId,
+        parentId,
+      },
+    });
+
+    if (!reply) {
+      throw new NotFoundException("Reply not found");
+    }
+
+    return this.delete(reply.id, userId);
+  }
   // RETWEET
   async retweet(userId: string, tweetId: string) {
     const created = await this.createTweet(userId, { retweetOfId: tweetId });
@@ -260,23 +295,6 @@ import { Queue } from 'bull';
     }
 
     return new TweetResponseDto(created);
-  }
-
-  async undoRetweet(userId: string, tweetId: string) {
-    const retweet = await this.prisma.tweet.findFirst({
-      where: {
-        authorId: userId,
-        retweetOfId: tweetId,
-      },
-    });
-
-    if (!retweet) {
-      throw new Error("Retweet not found");
-    }
-
-    return this.prisma.tweet.delete({
-      where: { id: retweet.id },
-    });
   }
 
 
@@ -309,23 +327,6 @@ import { Queue } from 'bull';
     }
 
     return new TweetResponseDto(created);
-  }
-
-  async deleteReply(userId: string, parentId: string) {
-    const reply = await this.prisma.tweet.findFirst({
-      where: {
-        authorId: userId,
-        parentId,
-      },
-    });
-
-    if (!reply) {
-      throw new Error("Reply not found");
-    }
-
-    return this.prisma.tweet.delete({
-      where: { id: reply.id },
-    });
   }
 
 
