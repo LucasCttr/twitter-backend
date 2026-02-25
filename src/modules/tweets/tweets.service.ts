@@ -10,6 +10,7 @@ import { PrismaService } from "../../database/prisma.service.js";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetResponseDto } from "./dto/tweet-response.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
+import { CursorPaginationDto } from "../../utils/cursor-pagination.dto.js";
 import { PaginatedResponse } from "../../utils/pagination-respone.dto.js";
 import { FeedResponseDto } from "../feed/dto/feed-query.dto.js";
 import { InjectQueue } from '@nestjs/bull';
@@ -76,12 +77,26 @@ import { Queue } from 'bull';
             name: true,
           },
         },
+        _count: {
+          select: {
+            likes: true,
+            replies: true,
+            retweets: true,
+          },
+        },
         retweetOf: {
           include: {
             author: {
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                retweets: true,
               },
             },
           },
@@ -92,6 +107,13 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                retweets: true,
               },
             },
           },
@@ -102,7 +124,11 @@ import { Queue } from 'bull';
     return tweet;
   }
 
-  async findById(id: string, includeRelated = true): Promise<TweetResponseDto> {
+  async findById(
+    id: string,
+    includeRelated = true,
+    repliesPagination?: CursorPaginationDto,
+  ): Promise<TweetResponseDto> {
     const tweet = await this.prisma.tweet.findUnique({
       where: { id },
       include: {
@@ -110,6 +136,13 @@ import { Queue } from 'bull';
           select: {
             id: true,
             name: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            replies: true,
+            retweets: true,
           },
         },
         retweetOf: {
@@ -120,6 +153,13 @@ import { Queue } from 'bull';
                 name: true,
               },
             },
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                retweets: true,
+              },
+            },
           },
         },
         parent: {
@@ -128,6 +168,13 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                retweets: true,
               },
             },
           },
@@ -139,7 +186,47 @@ import { Queue } from 'bull';
       throw new BadRequestException("Tweet not found");
     }
 
-    return new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
+    const dto = new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
+    // Ensure repliesCount excludes soft-deleted replies (deletedAt != null)
+    try {
+      const realRepliesCount = await this.prisma.tweet.count({ where: { parentId: id, deletedAt: null } });
+      dto.repliesCount = realRepliesCount;
+    } catch (e) {
+      // if counting fails, keep whatever _count provided
+    }
+
+    // Fetch level-1 replies with pagination
+    const limit = repliesPagination?.limit ?? 20;
+    const take = limit + 1;
+    const replyFindOptions: any = {
+      where: { parentId: id, deletedAt: null },
+      include: {
+        author: { select: { id: true, name: true } },
+        _count: { select: { likes: true, replies: true, retweets: true } },
+        retweetOf: { include: { author: { select: { id: true, name: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    };
+
+    if (repliesPagination?.cursor) {
+      replyFindOptions.cursor = { id: repliesPagination.cursor };
+      replyFindOptions.skip = 1;
+    }
+
+    const replies = await this.prisma.tweet.findMany(replyFindOptions);
+    let nextCursor: string | null = null;
+    let returned = replies;
+    if (replies.length > limit) {
+      nextCursor = replies[limit].id;
+      returned = replies.slice(0, limit);
+    }
+
+    dto.replies = returned.map((r) => new TweetResponseDto(r, { includeParent: false, includeRetweet: includeRelated }));
+    dto.repliesNextCursor = nextCursor;
+    dto.repliesLimit = limit;
+
+    return dto;
   }
 
   async getTweetsByPagination(pagination: TweetFilterDto, includeRelated = true) {
@@ -168,6 +255,13 @@ import { Queue } from 'bull';
         select: {
           id: true,
           name: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          replies: true,
+          retweets: true,
         },
       },
       retweetOf: {
@@ -348,6 +442,13 @@ import { Queue } from 'bull';
           select: {
             id: true,
             name: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            replies: true,
+            retweets: true,
           },
         },
         retweetOf: {

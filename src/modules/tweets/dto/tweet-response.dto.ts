@@ -8,10 +8,16 @@ export class TweetResponseDto {
     id?: string;
     name?: string;
   };
+  likesCount?: number;
+  retweetsCount?: number;
+  repliesCount?: number;
   retweetOfId: string | null;
   parentId: string | null;
   parent?: TweetResponseDto;
   retweetOf?: TweetResponseDto;
+  replies?: TweetResponseDto[];
+  repliesNextCursor?: string | null;
+  repliesLimit?: number | null;
 
   // El constructor acepta un objeto de tweet con relaciones anidadas y opciones para controlar su inclusión
   constructor(
@@ -45,6 +51,14 @@ export class TweetResponseDto {
       this.retweetOf = new TweetResponseDto(tweet.retweetOf, opts);
     }
 
+    // Counters from Prisma `_count` if available
+    this.likesCount = tweet._count?.likes ?? undefined;
+    this.retweetsCount = tweet._count?.retweets ?? undefined;
+    this.repliesCount = tweet._count?.replies ?? undefined;
+
     this.createdAt = tweet.createdAt;
+    this.replies = tweet.replies ? tweet.replies.map((r: any) => new TweetResponseDto(r, opts)) : undefined;
+    this.repliesNextCursor = tweet.repliesNextCursor ?? undefined;
+    this.repliesLimit = tweet.repliesLimit ?? undefined;
   }
 }

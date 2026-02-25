@@ -29,6 +29,15 @@ export class TweetsController {
     return this.tweetsService.delete(id, user.id);
   }
 
+  @Get(":id")
+  @UseGuards(JwtAuthGuard)
+  findById(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Query() pagination: CursorPaginationDto,
+  ) {
+    return this.tweetsService.findById(id, true, pagination);
+  }
 
   // RETWEET
   @Post('/:tweetId/retweet')
