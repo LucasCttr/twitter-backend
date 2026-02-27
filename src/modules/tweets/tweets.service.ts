@@ -439,10 +439,13 @@ import { Queue } from 'bull';
     const authorIds = following.map((f) => f.followingId);
     authorIds.push(userId);
 
+    const where: any = {
+      authorId: { in: authorIds },
+      deletedAt: null,
+    };
+
     const tweets = await this.prisma.tweet.findMany({
-      where: {
-        authorId: { in: authorIds },
-      },
+      where,
       include: {
         author: {
           select: {
@@ -467,6 +470,34 @@ import { Queue } from 'bull';
                 email: true,
               },
             },
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                retweets: true,
+              },
+            },
+            // incluir un nivel adicional de retweetOf para devolver retweets anidados
+            retweetOf: {
+              include: {
+                author: {
+                  select: { id: true, name: true, email: true },
+                },
+                _count: { select: { likes: true, replies: true, retweets: true } },
+              },
+            },
+            parent: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+                _count: { select: { likes: true, replies: true, retweets: true } },
+              },
+            },
           },
         },
         parent: {
@@ -478,10 +509,12 @@ import { Queue } from 'bull';
                 email: true,
               },
             },
+            _count: { select: { likes: true, replies: true, retweets: true } },
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      // orden determinista: primero por fecha, luego por id para evitar ambigüedades con timestamps iguales
+      orderBy: [ { createdAt: "desc" }, { id: "desc" } ],
       take: take + 1, // 👈 importante
       ...(cursor && {
         skip: 1,

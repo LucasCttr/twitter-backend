@@ -17,7 +17,8 @@ export class FeedController {
   @Get("")
   @UseGuards(JwtAuthGuard)
   getFeed(@CurrentUser() user: JwtPayload, @Query() query: FeedQueryDto) {
-    return this.tweetsService.getFeed(user.id, query.take, query.cursor);
+    // includeRelated = true to return nested parent/retweet relations in the feed
+    return this.tweetsService.getFeed(user.id, query.take, query.cursor, true);
   }
   // Endpoint para contar tweets nuevos
   @Get("new-count")

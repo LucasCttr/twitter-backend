@@ -23,11 +23,13 @@ export class TweetResponseDto {
   // El constructor acepta un objeto de tweet con relaciones anidadas y opciones para controlar su inclusión
   constructor(
     tweet: any,
-    opts?: { includeParent?: boolean; includeRetweet?: boolean },
+    opts?: { includeParent?: boolean; includeRetweet?: boolean; retweetDepth?: number },
   ) {
     // Opciones para controlar la inclusión de relaciones anidadas
     const includeParent = opts?.includeParent ?? true;
     const includeRetweet = opts?.includeRetweet ?? true;
+    // retweetDepth controls how many levels of `retweetOf` to include (prevents infinite nesting)
+    const retweetDepth = opts?.retweetDepth ?? 1;
 
     // Asignación de campos básicos
     this.id = tweet.id;
@@ -49,8 +51,8 @@ export class TweetResponseDto {
     if (includeParent && tweet.parent) {
       this.parent = new TweetResponseDto(tweet.parent, opts);
     }
-    if (includeRetweet && tweet.retweetOf) {
-      this.retweetOf = new TweetResponseDto(tweet.retweetOf, opts);
+    if (includeRetweet && tweet.retweetOf && retweetDepth > 0) {
+      this.retweetOf = new TweetResponseDto(tweet.retweetOf, { ...opts, retweetDepth: retweetDepth - 1 });
     }
 
     // Counters from Prisma `_count` if available
