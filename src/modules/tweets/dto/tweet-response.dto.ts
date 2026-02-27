@@ -7,6 +7,7 @@ export class TweetResponseDto {
   author?: {
     id?: string;
     name?: string;
+    email?: string;
   };
   likesCount?: number;
   retweetsCount?: number;
@@ -40,6 +41,7 @@ export class TweetResponseDto {
       ? {
           id: tweet.author.id ?? undefined,
           name: tweet.author.name ?? undefined,
+          email: tweet.author.email ?? undefined,
         }
       : undefined;
 

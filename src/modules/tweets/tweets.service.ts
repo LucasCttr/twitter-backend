@@ -75,6 +75,7 @@ import { Queue } from 'bull';
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
         _count: {
@@ -90,6 +91,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
             _count: {
@@ -107,6 +109,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
             _count: {
@@ -137,6 +140,7 @@ import { Queue } from 'bull';
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
         _count: {
@@ -152,6 +156,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
             _count: {
@@ -169,6 +174,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
             _count: {
@@ -196,9 +202,9 @@ import { Queue } from 'bull';
     const replyFindOptions: any = {
       where: { parentId: id, deletedAt: null },
       include: {
-        author: { select: { id: true, name: true } },
+        author: { select: { id: true, name: true, email: true } },
         _count: { select: { likes: true, replies: true, retweets: true } },
-        retweetOf: { include: { author: { select: { id: true, name: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take,
@@ -247,12 +253,13 @@ import { Queue } from 'bull';
     where.deletedAt = deletedAt;
 
     const include = {
-      author: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
       _count: {
         select: {
           likes: true,
@@ -266,6 +273,7 @@ import { Queue } from 'bull';
             select: {
               id: true,
               name: true,
+              email: true,
             },
           },
         },
@@ -276,6 +284,7 @@ import { Queue } from 'bull';
             select: {
               id: true,
               name: true,
+              email: true,
             },
           },
         },
@@ -439,6 +448,7 @@ import { Queue } from 'bull';
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
         _count: {
@@ -454,6 +464,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
           },
@@ -464,6 +475,7 @@ import { Queue } from 'bull';
               select: {
                 id: true,
                 name: true,
+                email: true,
               },
             },
           },
