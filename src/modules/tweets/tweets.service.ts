@@ -358,6 +358,7 @@ import { Queue } from 'bull';
       where: {
         authorId: userId,
         retweetOfId: tweetId,
+        deletedAt: null,
       },
     });
 
@@ -365,7 +366,11 @@ import { Queue } from 'bull';
       throw new NotFoundException("Retweet not found");
     }
 
-    return this.delete(retweet.id, userId);
+    // Hard-delete the retweet (only for retweets we remove the row)
+    await this.prisma.tweet.delete({ where: { id: retweet.id } });
+
+    // Return a simple success message for the client to update state
+    return { message: 'Retweet removed successfully' };
   }
 
   // borra un comentario (child tweet) donde `parentId` es el id del tweet padre y `userId` es el autor del comentario
@@ -418,7 +423,20 @@ import { Queue } from 'bull';
       });
     }
 
-    return new TweetResponseDto(created);
+    // Fetch the created retweet with includes so the DTO contains flags for current user
+    const createdFull = await this.prisma.tweet.findUnique({
+      where: { id: created.id },
+      include: {
+        author: { select: { id: true, name: true, email: true } },
+        _count: { select: { likes: true, replies: true, retweets: true } },
+        likes: { where: { userId }, select: { userId: true } },
+        retweets: { where: { authorId: userId, deletedAt: null }, select: { id: true } },
+        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      },
+    });
+
+    return new TweetResponseDto(createdFull, { includeParent: true, includeRetweet: true });
   }
 
   // LIKE / UNLIKE moved from SocialService
