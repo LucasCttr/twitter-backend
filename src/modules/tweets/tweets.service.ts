@@ -368,9 +368,20 @@ import { Queue } from 'bull';
 
     // Hard-delete the retweet (only for retweets we remove the row)
     await this.prisma.tweet.delete({ where: { id: retweet.id } });
+    // Return the updated original tweet DTO (with flags for current user)
+    const updated = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      include: {
+        author: { select: { id: true, name: true, email: true } },
+        _count: { select: { likes: true, replies: true, retweets: true } },
+        likes: { where: { userId }, select: { userId: true } },
+        retweets: { where: { authorId: userId, deletedAt: null }, select: { id: true } },
+        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      },
+    });
 
-    // Return a simple success message for the client to update state
-    return { message: 'Retweet removed successfully' };
+    return new TweetResponseDto(updated, { includeParent: true, includeRetweet: true });
   }
 
   // borra un comentario (child tweet) donde `parentId` es el id del tweet padre y `userId` es el autor del comentario
