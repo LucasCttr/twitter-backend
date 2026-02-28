@@ -69,6 +69,25 @@ export class TweetsController {
     return this.tweetsService.reply(user.id, tweetId, dto)
   }
 
+  // LIKE 
+  @Post(':tweetId/like')
+  @UseGuards(JwtAuthGuard)
+  like(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+  ) {
+    return this.tweetsService.like(user.id, tweetId)
+  }
+
+  @Delete(':tweetId/like')
+  @UseGuards(JwtAuthGuard)
+  unlike(
+    @CurrentUser() user: JwtPayload,
+    @Param('tweetId') tweetId: string,
+  ) {
+    return this.tweetsService.unlike(user.id, tweetId)
+  }
+
   @Delete(':tweetId/reply')
   @UseGuards(JwtAuthGuard)
   deleteReply(

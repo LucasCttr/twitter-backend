@@ -33,19 +33,5 @@ export class SocialController {
   }
 
   // LIKE
-  @Post('like/:tweetId')
-  like(
-    @CurrentUser() user: JwtPayload,
-    @Param('tweetId') tweetId: string,
-  ) {
-    return this.socialService.like(user.id, tweetId)
-  }
-
-  @Delete('like/:tweetId')
-  unlike(
-    @CurrentUser() user: JwtPayload,
-    @Param('tweetId') tweetId: string,
-  ) {
-    return this.socialService.unlike(user.id, tweetId)
-  }
+  // LIKE endpoints moved to TweetsController
 }

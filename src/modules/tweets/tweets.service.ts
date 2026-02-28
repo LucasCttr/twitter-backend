@@ -21,6 +21,7 @@ import { Queue } from 'bull';
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue("tweet-notify") private readonly tweetNotifyQueue: Queue,
+    @InjectQueue("social-notify") private readonly socialNotifyQueue: Queue,
   ) {}
 
     // Contador de tweets nuevos desde lastSeen
@@ -384,6 +385,16 @@ import { Queue } from 'bull';
   }
   // RETWEET
   async retweet(userId: string, tweetId: string) {
+    // Verificar si ya existe un retweet activo del mismo usuario sobre el tweet
+    const existing = await this.prisma.tweet.findFirst({
+      where: { authorId: userId, retweetOfId: tweetId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Tweet already retweeted');
+    }
+
     const created = await this.createTweet(userId, { retweetOfId: tweetId });
 
     // Notificar al autor del tweet original
@@ -408,6 +419,101 @@ import { Queue } from 'bull';
     }
 
     return new TweetResponseDto(created);
+  }
+
+  // LIKE / UNLIKE moved from SocialService
+  async like(userId: string, tweetId: string) {
+    // Prevent duplicate likes
+    const existing = await this.prisma.like.findUnique({
+      where: { userId_tweetId: { userId, tweetId } },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Tweet already liked');
+    }
+
+    const like = await this.prisma.like.create({
+      data: {
+        userId,
+        tweetId,
+      },
+    });
+
+    // Obtener el autor del tweet para notificar
+    const tweet = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: { authorId: true },
+    });
+
+    // evita notificarte a ti mismo o si no hay autor
+    if (!tweet?.authorId || tweet.authorId === userId) {
+      // Return updated tweet DTO even if no notification is sent
+      const updated = await this.prisma.tweet.findUnique({
+        where: { id: tweetId },
+        include: {
+          author: { select: { id: true, name: true, email: true } },
+          _count: { select: { likes: true, replies: true, retweets: true } },
+          likes: { where: { userId }, select: { userId: true } },
+          retweets: { where: { authorId: userId }, select: { id: true } },
+          retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+          parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        },
+      });
+
+      return new TweetResponseDto(updated);
+    }
+
+    const payload = {
+      userId: tweet.authorId,
+      tweetId,
+      likerId: userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.socialNotifyQueue.add("like-notify", payload, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: true,
+    });
+
+    const updated = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      include: {
+        author: { select: { id: true, name: true, email: true } },
+        _count: { select: { likes: true, replies: true, retweets: true } },
+        likes: { where: { userId }, select: { userId: true } },
+        retweets: { where: { authorId: userId }, select: { id: true } },
+        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      },
+    });
+
+    return new TweetResponseDto(updated);
+  }
+
+  async unlike(userId: string, tweetId: string) {
+    await this.prisma.like.delete({
+      where: {
+        userId_tweetId: {
+          userId,
+          tweetId,
+        },
+      },
+    });
+
+    const updated = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      include: {
+        author: { select: { id: true, name: true, email: true } },
+        _count: { select: { likes: true, replies: true, retweets: true } },
+        likes: { where: { userId }, select: { userId: true } },
+        retweets: { where: { authorId: userId }, select: { id: true } },
+        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+        parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      },
+    });
+
+    return new TweetResponseDto(updated);
   }
 
 

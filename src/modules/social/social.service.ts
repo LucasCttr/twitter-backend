@@ -6,7 +6,6 @@ import {
 import { PrismaService } from "../../database/prisma.service";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
-import { LikeNotifyDto } from "../notifications/dto/like-notify.dto";
 import { FollowNotifyDto } from "../notifications/dto/follow-notify.dto";
 
 @Injectable()
@@ -80,47 +79,5 @@ export class SocialService {
     });
   }
 
-  async like(userId: string, tweetId: string) {
-    const like = await this.prisma.like.create({
-      data: {
-        userId,
-        tweetId,
-      },
-    });
-
-    // Obtener el autor del tweet para notificar
-    const tweet = await this.prisma.tweet.findUnique({
-      where: { id: tweetId },
-      select: { authorId: true },
-    });
-
-    // evita notificarte a ti mismo o si no hay autor
-    if (!tweet?.authorId || tweet.authorId === userId) return like;
-
-    const payload: LikeNotifyDto = {
-      userId: tweet.authorId,
-      tweetId,
-      likerId: userId,
-      createdAt: new Date().toISOString(),
-    };
-
-    await this.socialNotifyQueue.add("like-notify", payload, {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 1000 },
-      removeOnComplete: true,
-    });
-
-    return like;
-  }
-
-  async unlike(userId: string, tweetId: string) {
-    return this.prisma.like.delete({
-      where: {
-        userId_tweetId: {
-          userId,
-          tweetId,
-        },
-      },
-    });
-  }
+  // like/unlike moved to TweetsService
 }
