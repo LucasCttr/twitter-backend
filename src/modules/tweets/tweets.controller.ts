@@ -7,7 +7,7 @@ import { CurrentUser } from "../../utils/current-user.decorator.js";
 import { CursorPaginationDto } from "../../utils/cursor-pagination.dto.js";
 import { TweetFilterDto } from "./dto/tweet-filter.dto.js";
 
-@Controller("tweet")
+@Controller("tweets")
 export class TweetsController {
   constructor(private readonly tweetsService: TweetsService) {}
 
