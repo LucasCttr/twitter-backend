@@ -19,8 +19,8 @@ export class TweetsController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getByPagination(@Query() pagination: TweetFilterDto) {
-    return this.tweetsService.getTweetsByPagination(pagination);
+  getByPagination(@CurrentUser() user: JwtPayload, @Query() pagination: TweetFilterDto) {
+    return this.tweetsService.getTweetsByPagination(pagination, true, user.id);
   }
 
   @Delete(":id")

@@ -231,7 +231,7 @@ import { Queue } from 'bull';
   }
 
   // Cursor-based pagination (no offset) con filtros opcionales
-  async getTweetsByPagination(pagination: TweetFilterDto, includeRelated = true) {
+  async getTweetsByPagination(pagination: TweetFilterDto, includeRelated = true, currentUserId?: string) {
     // Cursor-based pagination (no offset)
     const limit = pagination.limit ?? 20;
     const deletedAt = null; // Solo tweets no eliminados
@@ -252,14 +252,14 @@ import { Queue } from 'bull';
     }
     where.deletedAt = deletedAt;
 
-    const include = {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
+    const include: any = {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
       _count: {
         select: {
           likes: true,
@@ -290,6 +290,19 @@ import { Queue } from 'bull';
         },
       },
     };
+
+    // If currentUserId is provided, include filtered `likes` and `retweets` to compute flags
+    if (currentUserId) {
+      include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      // also include for nested relations
+      include.retweetOf.include._count = include.retweetOf.include._count ?? { select: { likes: true, replies: true, retweets: true } };
+      include.retweetOf.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.retweetOf.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      include.parent.include._count = include.parent.include._count ?? { select: { likes: true, replies: true, retweets: true } };
+      include.parent.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.parent.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+    }
 
     const findOptions: any = {
       where,
@@ -454,6 +467,9 @@ import { Queue } from 'bull';
             email: true,
           },
         },
+        // include likes/retweets for current user to compute flags
+        likes: { where: { userId }, select: { userId: true } },
+        retweets: { where: { authorId: userId }, select: { id: true } },
         _count: {
           select: {
             likes: true,
@@ -470,6 +486,8 @@ import { Queue } from 'bull';
                 email: true,
               },
             },
+            likes: { where: { userId }, select: { userId: true } },
+            retweets: { where: { authorId: userId }, select: { id: true } },
             _count: {
               select: {
                 likes: true,
@@ -495,6 +513,8 @@ import { Queue } from 'bull';
                     email: true,
                   },
                 },
+                likes: { where: { userId }, select: { userId: true } },
+                retweets: { where: { authorId: userId }, select: { id: true } },
                 _count: { select: { likes: true, replies: true, retweets: true } },
               },
             },
@@ -509,6 +529,8 @@ import { Queue } from 'bull';
                 email: true,
               },
             },
+            likes: { where: { userId }, select: { userId: true } },
+            retweets: { where: { authorId: userId }, select: { id: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
           },
         },

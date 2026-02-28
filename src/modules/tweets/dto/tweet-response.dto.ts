@@ -19,6 +19,8 @@ export class TweetResponseDto {
   replies?: TweetResponseDto[];
   repliesNextCursor?: string | null;
   repliesLimit?: number | null;
+  likedByCurrentUser?: boolean;
+  retweetedByCurrentUser?: boolean;
 
   // El constructor acepta un objeto de tweet con relaciones anidadas y opciones para controlar su inclusión
   constructor(
@@ -59,6 +61,10 @@ export class TweetResponseDto {
     this.likesCount = tweet._count?.likes ?? undefined;
     this.retweetsCount = tweet._count?.retweets ?? undefined;
     this.repliesCount = tweet._count?.replies ?? undefined;
+
+    // Flags if the current user liked/retweeted this tweet (Prisma include expected)
+    this.likedByCurrentUser = tweet.likes ? tweet.likes.length > 0 : undefined;
+    this.retweetedByCurrentUser = tweet.retweets ? tweet.retweets.length > 0 : undefined;
 
     this.createdAt = tweet.createdAt;
     this.replies = tweet.replies ? tweet.replies.map((r: any) => new TweetResponseDto(r, opts)) : undefined;
