@@ -127,95 +127,113 @@ import { Queue } from 'bull';
 
     return tweet;
   }
-
+  
   // Obtiene un tweet por id, con opciones para incluir relaciones anidadas y paginar replies 
   async findById(
     id: string,
     includeRelated = true,
     repliesPagination?: CursorPaginationDto,
+    currentUserId?: string,
   ): Promise<TweetResponseDto> {
-    const tweet = await this.prisma.tweet.findUnique({
-      where: { id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+    // Construir include para likes/retweets del usuario actual
+    const include: any = {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
-        _count: {
-          select: {
-            likes: true,
-            replies: true,
-            retweets: true,
-          },
+      },
+      _count: {
+        select: {
+          likes: true,
+          replies: true,
+          retweets: true,
         },
-        retweetOf: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            _count: {
-              select: {
-                likes: true,
-                replies: true,
-                retweets: true,
-              },
+      },
+      retweetOf: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
-        },
-        parent: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            _count: {
-              select: {
-                likes: true,
-                replies: true,
-                retweets: true,
-              },
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
+              retweets: true,
             },
           },
         },
       },
+      parent: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
+              retweets: true,
+            },
+          },
+        },
+      },
+    };
+    if (currentUserId) {
+      include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      include.retweetOf.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.retweetOf.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      include.parent.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      include.parent.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+    }
+    const tweet = await this.prisma.tweet.findUnique({
+      where: { id },
+      include,
     });
 
     if (!tweet) {
       throw new BadRequestException("Tweet not found");
     }
 
-    const dto = new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
-    // Usa Prisma `_count` (incluye soft-deleted items) — DTO lee `_count` directamente
 
-    // Fetch level-1 replies con pagination
+    const dto = new TweetResponseDto(tweet, { includeParent: includeRelated, includeRetweet: includeRelated });
+    // Fetch level-1 replies con likes/retweets del usuario actual
     const limit = repliesPagination?.limit ?? 20;
     const take = limit + 1;
+    const replyInclude: any = {
+      author: { select: { id: true, name: true, email: true } },
+      _count: { select: { likes: true, replies: true, retweets: true } },
+      retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+      parent: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
+    };
+    if (currentUserId) {
+      replyInclude.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      replyInclude.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      replyInclude.retweetOf.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      replyInclude.retweetOf.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+      replyInclude.parent.include.likes = { where: { userId: currentUserId }, select: { userId: true } };
+      replyInclude.parent.include.retweets = { where: { authorId: currentUserId }, select: { id: true } };
+    }
     const replyFindOptions: any = {
       where: { parentId: id, deletedAt: null },
-      include: {
-        author: { select: { id: true, name: true, email: true } },
-        _count: { select: { likes: true, replies: true, retweets: true } },
-        retweetOf: { include: { author: { select: { id: true, name: true, email: true } }, _count: { select: { likes: true, replies: true, retweets: true } } } },
-      },
+      include: replyInclude,
       orderBy: { createdAt: 'desc' },
       take,
     };
-
     if (repliesPagination?.cursor) {
       replyFindOptions.cursor = { id: repliesPagination.cursor };
       replyFindOptions.skip = 1;
     }
-
     const replies = await this.prisma.tweet.findMany(replyFindOptions);
     let nextCursor: string | null = null;
     let returned = replies;
@@ -223,11 +241,9 @@ import { Queue } from 'bull';
       nextCursor = replies[limit].id;
       returned = replies.slice(0, limit);
     }
-
     dto.replies = returned.map((r) => new TweetResponseDto(r, { includeParent: false, includeRetweet: includeRelated }));
     dto.repliesNextCursor = nextCursor;
     dto.repliesLimit = limit;
-
     return dto;
   }
 
@@ -292,7 +308,7 @@ import { Queue } from 'bull';
       },
     };
 
-    // If currentUserId is provided, include filtered `likes` and `retweets` to compute flags
+    // Si se proporciona currentUserId, incluye relaciones para calcular likedByCurrentUser y retweetedByCurrentUser
     if (currentUserId) {
       include.likes = { where: { userId: currentUserId }, select: { userId: true } };
       include.retweets = { where: { authorId: currentUserId }, select: { id: true } };

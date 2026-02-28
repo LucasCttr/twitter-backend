@@ -36,7 +36,7 @@ export class TweetsController {
     @Param("id") id: string,
     @Query() pagination: CursorPaginationDto,
   ) {
-    return this.tweetsService.findById(id, true, pagination);
+    return this.tweetsService.findById(id, true, pagination, user.id);
   }
 
   // RETWEET
