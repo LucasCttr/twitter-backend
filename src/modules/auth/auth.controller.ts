@@ -6,6 +6,8 @@ import { signJwt } from "../../utils/jwt.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 
+import { RefreshDto } from "./dto/refresh.dto.js";
+
 
 @Controller('auth')
 export class AuthController {
@@ -25,12 +27,30 @@ export class AuthController {
   async login(@Req() req: any) {
     const user = req.user;
     const token = signJwt({ sub: user.id, email: user.email });
-    return { token, user };   // NestJS serializa y responde 200 solo
+    const refreshToken = await this.authService.createRefreshToken(user.id);
+    return { token, refreshToken, user };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async profile(@Req() req: any) {
     return { user: req.user };
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: RefreshDto) {
+    const userId = await this.authService.validateRefreshToken(body.refreshToken);
+    if (!userId) {
+      return { error: 'Invalid or expired refresh token' };
+    }
+    const user = await this.authService.findUserById(userId);
+    if (!user) {
+      return { error: 'User not found' };
+    }
+    const token = signJwt({ sub: user.id, email: user.email });
+    // Opcional: emitir nuevo refresh token y revocar el anterior
+    await this.authService.revokeRefreshToken(body.refreshToken);
+    const newRefreshToken = await this.authService.createRefreshToken(user.id);
+    return { token, refreshToken: newRefreshToken, user };
   }
 }

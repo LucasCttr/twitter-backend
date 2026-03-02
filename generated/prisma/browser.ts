@@ -37,3 +37,13 @@ export type Follow = Prisma.FollowModel
  * 
  */
 export type Like = Prisma.LikeModel
+/**
+ * Model RefreshToken
+ * 
+ */
+export type RefreshToken = Prisma.RefreshTokenModel
+/**
+ * Model Bookmark
+ * 
+ */
+export type Bookmark = Prisma.BookmarkModel

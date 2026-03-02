@@ -17,4 +17,9 @@ export class TweetFilterDto extends CursorPaginationDto {
   @IsOptional()
   @IsUUID()
   retweetOfId?: string;
+
+  //Permite filtrar por tipo de tweet: 'tweet', 'reply', 'like', 'retweet'
+  @IsOptional()
+  @IsString()
+  type?: 'tweet' | 'reply' | 'like' | 'retweet';
 }

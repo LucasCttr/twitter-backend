@@ -3,6 +3,9 @@ import { PrismaService } from '../../database/prisma.service.js'
 import * as bcrypt from 'bcrypt'
 import { RegisterDto } from './dto/register.dto.js'
 
+import { signRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
+import { addMinutes } from 'date-fns';
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -59,5 +62,44 @@ export class AuthService {
         email: true,
       },
     })
+  }
+
+  async createRefreshToken(userId: string) {
+    const payload = { sub: userId };
+    const token = signRefreshToken(payload);
+    // Decodificar para obtener expiración
+    const decoded: any = verifyRefreshToken(token);
+    const expiresAt = new Date(decoded.exp * 1000);
+    await this.prisma.refreshToken.create({
+      data: {
+        token,
+        userId,
+        expiresAt,
+      },
+    });
+    return token;
+  }
+
+  async validateRefreshToken(token: string) {
+    let payload: any;
+    try {
+      payload = verifyRefreshToken(token);
+    } catch {
+      return null;
+    }
+    const dbToken = await this.prisma.refreshToken.findUnique({
+      where: { token },
+    });
+    if (!dbToken || dbToken.revoked || dbToken.expiresAt < new Date()) {
+      return null;
+    }
+    return dbToken.userId;
+  }
+
+  async revokeRefreshToken(token: string) {
+    await this.prisma.refreshToken.update({
+      where: { token },
+      data: { revoked: true },
+    });
   }
 }
