@@ -438,16 +438,10 @@ export class TweetsService {
     };
 
     if (pagination.cursor) {
-      console.log('Cursor recibido:', pagination.cursor);
-      // Buscar el tweet del cursor antes de la consulta paginada
-      const cursorTweet = await this.prisma.tweet.findUnique({ where: { id: pagination.cursor } });
-      console.log('Tweet del cursor:', cursorTweet);
-      console.log('Filtros where:', JSON.stringify(where));
       findOptions.cursor = { id: pagination.cursor };
       findOptions.skip = 1;
     }
 
-    console.log('findOptions:', JSON.stringify(findOptions));
     const tweets = await this.prisma.tweet.findMany(findOptions);
 
     // Nueva lógica igual a FeedResponseDto
