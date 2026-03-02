@@ -24,11 +24,17 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Req() req: any) {
+  async login(@Req() req: any, @Res({ passthrough: true }) res: any) {
     const user = req.user;
     const token = signJwt({ sub: user.id, email: user.email });
     const refreshToken = await this.authService.createRefreshToken(user.id);
-    return { token, refreshToken, user };
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    return { token, user };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -38,8 +44,12 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Body() body: RefreshDto) {
-    const userId = await this.authService.validateRefreshToken(body.refreshToken);
+  async refresh(@Req() req: any, @Res({ passthrough: true }) res: any) {
+    const tokenFromCookie = req.cookies?.refreshToken;
+    if (!tokenFromCookie) {
+      return { error: 'Missing refresh token' };
+    }
+    const userId = await this.authService.validateRefreshToken(tokenFromCookie);
     if (!userId) {
       return { error: 'Invalid or expired refresh token' };
     }
@@ -47,10 +57,15 @@ export class AuthController {
     if (!user) {
       return { error: 'User not found' };
     }
-    const token = signJwt({ sub: user.id, email: user.email });
-    // Opcional: emitir nuevo refresh token y revocar el anterior
-    await this.authService.revokeRefreshToken(body.refreshToken);
+    await this.authService.revokeRefreshToken(tokenFromCookie);
     const newRefreshToken = await this.authService.createRefreshToken(user.id);
-    return { token, refreshToken: newRefreshToken, user };
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    const token = signJwt({ sub: user.id, email: user.email });
+    return { token, user };
   }
 }
