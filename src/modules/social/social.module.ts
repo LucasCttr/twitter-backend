@@ -5,7 +5,7 @@ import { SocialController } from "./social.controller";
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: "social-notify" }),
+    BullModule.registerQueue({ name: "notifications" }),
   ],
   providers: [SocialService],
   controllers: [SocialController],

@@ -6,8 +6,7 @@ import { SocialModule } from "../social/social.module.js";
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: "tweet-notify" }),
-    BullModule.registerQueue({ name: "social-notify" }),
+    BullModule.registerQueue({ name: "notifications" }),
     SocialModule,
   ],
   providers: [TweetsService],

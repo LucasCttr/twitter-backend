@@ -20,8 +20,7 @@ import { Queue } from "bull";
 export class TweetsService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue("tweet-notify") private readonly tweetNotifyQueue: Queue,
-    @InjectQueue("social-notify") private readonly socialNotifyQueue: Queue,
+    @InjectQueue("notifications") private readonly notificationsQueue: Queue,
   ) {}
 
   // Contador de tweets nuevos desde lastSeen
@@ -575,7 +574,7 @@ export class TweetsService {
         createdAt: new Date().toISOString(),
       };
 
-      await this.tweetNotifyQueue.add("retweet-notify", payload, {
+      await this.notificationsQueue.add("retweet-notify", payload, {
         attempts: 3,
         backoff: { type: "exponential", delay: 1000 },
         removeOnComplete: true,
@@ -677,7 +676,7 @@ export class TweetsService {
       createdAt: new Date().toISOString(),
     };
 
-    await this.socialNotifyQueue.add("like-notify", payload, {
+    await this.notificationsQueue.add("like-notify", payload, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },
       removeOnComplete: true,
@@ -764,7 +763,7 @@ export class TweetsService {
         createdAt: new Date().toISOString(),
       };
 
-      await this.tweetNotifyQueue.add("reply-notify", payload, {
+      await this.notificationsQueue.add("reply-notify", payload, {
         attempts: 3,
         backoff: { type: "exponential", delay: 1000 },
         removeOnComplete: true,

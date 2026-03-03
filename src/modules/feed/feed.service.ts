@@ -1,14 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { FeedResponseDto } from "./dto/feed-query.dto";
-import { FeedGateway } from "./feed.gateway";
+import { NotificationsGateway } from "../notifications/notifications.gateway";
 
 @Injectable()
 export class FeedService {
   constructor(private readonly prisma: PrismaService) {}
-  private gateway: FeedGateway | null = null;
+  private gateway: NotificationsGateway | null = null;
 
-  setGateway(gateway: FeedGateway) {
+  setGateway(gateway: NotificationsGateway) {
     this.gateway = gateway;
   }
 

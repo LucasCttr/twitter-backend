@@ -4,7 +4,6 @@ import { CurrentUser } from "../../utils/current-user.decorator";
 import { JwtPayload } from "jsonwebtoken";
 import { FeedQueryDto } from "./dto/feed-query.dto";
 import { TweetsService } from "../tweets/tweets.service";
-import { FeedGateway } from "./feed.gateway";
 import { FeedService } from "./feed.service";
 
 @Controller("feed")

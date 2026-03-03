@@ -9,7 +9,20 @@
 * 🟢 You can import this file directly.
 */
 
+export const NotificationAction = {
+  LIKED: 'LIKED',
+  REPLIED: 'REPLIED',
+  RETWEETED: 'RETWEETED',
+  FOLLOWED: 'FOLLOWED',
+  MENTIONED: 'MENTIONED'
+} as const
+
+export type NotificationAction = (typeof NotificationAction)[keyof typeof NotificationAction]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const NotificationTarget = {
+  TWEET: 'TWEET',
+  USER: 'USER'
+} as const
+
+export type NotificationTarget = (typeof NotificationTarget)[keyof typeof NotificationTarget]

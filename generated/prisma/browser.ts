@@ -47,3 +47,8 @@ export type RefreshToken = Prisma.RefreshTokenModel
  * 
  */
 export type Bookmark = Prisma.BookmarkModel
+/**
+ * Model Notification
+ * 
+ */
+export type Notification = Prisma.NotificationModel
