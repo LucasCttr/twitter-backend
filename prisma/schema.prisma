@@ -20,6 +20,7 @@ model User {
   name      String
   email     String    @unique
   password  String
+  profileImage String? // URL o path de la imagen de perfil
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -54,6 +55,8 @@ model Tweet {
   likes Like[]
 
   bookmarks Bookmark[]
+
+  notifications Notification[] @relation("NotificationTweet")
 
   @@index([authorId])
   @@index([createdAt])
@@ -113,8 +116,8 @@ model Notification {
   action      NotificationAction
   targetType  NotificationTarget
   targetId    String?
+  tweet       Tweet?   @relation("NotificationTweet", fields: [targetId], references: [id])
   textPreview String?
-  url         String?
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
 

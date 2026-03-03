@@ -570,7 +570,7 @@ export class TweetsService {
       const payload = {
         userId: original.authorId,
         tweetId,
-        likerId: userId,
+        retweeterId: userId,
         createdAt: new Date().toISOString(),
       };
 
@@ -759,7 +759,7 @@ export class TweetsService {
       const payload = {
         userId: original.authorId,
         tweetId: parentId,
-        likerId: userId,
+        replierId: userId,
         createdAt: new Date().toISOString(),
       };
 

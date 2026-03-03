@@ -16,7 +16,6 @@ export class NotificationSummaryDto {
   textPreview?: string;
   createdAt!: Date;
   read!: boolean;
-  url?: string;
 }
 
 export class NotificationListResponseDto {

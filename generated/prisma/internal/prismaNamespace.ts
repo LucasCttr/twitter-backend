@@ -972,6 +972,7 @@ export const UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   password: 'password',
+  profileImage: 'profileImage',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
@@ -1039,7 +1040,6 @@ export const NotificationScalarFieldEnum = {
   targetType: 'targetType',
   targetId: 'targetId',
   textPreview: 'textPreview',
-  url: 'url',
   read: 'read',
   createdAt: 'createdAt'
 } as const

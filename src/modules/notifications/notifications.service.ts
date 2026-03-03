@@ -32,7 +32,6 @@ constructor(private readonly prisma: PrismaService) {}
         targetType,
         targetId,
         textPreview,
-        url,
       },
     });
   }
@@ -48,7 +47,10 @@ constructor(private readonly prisma: PrismaService) {}
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      include: { actor: true },
+      include: {
+        actor: true,
+        tweet: true,
+      },
     });
     const items = notifications.slice(0, limit);
     const nextCursor = notifications.length > limit ? notifications[limit].id : null;

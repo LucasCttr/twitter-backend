@@ -102,6 +102,7 @@ export class UserService {
        email: true,
        createdAt: true,
        deletedAt: true,
+       profileImage: true,
        _count: {
          select: {
            followers: true,
@@ -127,6 +128,7 @@ export class UserService {
       isFollowing: false,
       isFollowedBy: false,
       followStatus: 'self' as const,
+      profileImage: user.profileImage,
     };
   }
 
@@ -148,6 +150,7 @@ export class UserService {
     isFollowing,
     isFollowedBy,
     followStatus: this.toFollowStatus(isFollowing, isFollowedBy),
+    profileImage: user.profileImage,
   };
  }
   
@@ -219,15 +222,16 @@ export class UserService {
     const data: any = {};
     if (dto.name) data.name = dto.name;
     if (dto.password) data.password = await bcrypt.hash(dto.password, 10);
+    if (dto.profileImage !== undefined) data.profileImage = dto.profileImage;
 
     if (Object.keys(data).length === 0) {
-      return { id: user.id, name: user.name, email: user.email };
+      return { id: user.id, name: user.name, email: user.email, profileImage: user.profileImage };
     }
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data,
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, profileImage: true },
     });
 
     return updated;

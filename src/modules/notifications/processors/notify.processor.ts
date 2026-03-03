@@ -5,6 +5,8 @@ import { FollowNotifyDto } from '../dto/follow-notify.dto';
 import { LikeNotifyDto } from "../dto/like-notify.dto";
 import { NotificationsGateway } from "../notifications.gateway";
 import { NotificationsService } from "../notifications.service";
+import { Prisma } from "../../../../generated/prisma/browser";
+import { PrismaService } from "../../../database/prisma.service";
 // Puedes importar enums si los necesitas
 
 // Este processor maneja las notificaciones relacionadas con acciones sociales, como likes y follows. 
@@ -13,7 +15,8 @@ import { NotificationsService } from "../notifications.service";
 export class NotificationsProcessor {
   constructor(
     private readonly notifications: NotificationsGateway,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   // Procesa las notificaciones de like, emitiendo un evento al usuario receptor para informarle que su tweet ha sido gustado por otro usuario.
@@ -26,8 +29,24 @@ export class NotificationsProcessor {
       action: 'LIKED',
       targetType: 'TWEET',
       targetId: tweetId,
-      url: `/tweet/${tweetId}`,
     });
+    // Obtener el tweet original y su autor
+    const tweet = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: {
+        id: true,
+        content: true,
+        author: { select: { id: true, name: true } },
+        retweetOf: {
+          select: {
+            id: true,
+            content: true,
+            author: { select: { id: true, name: true } },
+          }
+        }
+      },
+    });
+    const originalTweet = tweet?.retweetOf || tweet;
     const unreadCount = await this.notificationsService.getUnreadCount(userId);
     this.notifications.emitToUser(userId, "notifications", {
       summary: {
@@ -35,6 +54,7 @@ export class NotificationsProcessor {
         actor: { id: likerId },
         action: 'LIKED',
         targetId: tweetId,
+        tweet: originalTweet,
       },
       unreadCount,
     });
@@ -51,7 +71,6 @@ export class NotificationsProcessor {
       action: 'FOLLOWED',
       targetType: 'USER',
       targetId: followerId,
-      url: `/user/${followerId}`,
     });
     const unreadCount = await this.notificationsService.getUnreadCount(userId);
     console.log('[NotificationsProcessor] Emitiendo notificación de follow', {
@@ -73,14 +92,31 @@ export class NotificationsProcessor {
   @Process("retweet-notify")
   async handleRetweetNotify(job: any) {
     const { userId, tweetId, retweeterId } = job.data;
+    console.log('[NOTIFY] Procesando retweet-notify', job.data);
     const notification = await this.notificationsService.createNotification({
       userId,
       actorId: retweeterId,
       action: 'RETWEETED',
       targetType: 'TWEET',
       targetId: tweetId,
-      url: `/tweet/${tweetId}`,
     });
+    // Obtener el tweet original y su autor
+    const tweet = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: {
+        id: true,
+        content: true,
+        author: { select: { id: true, name: true } },
+        retweetOf: {
+          select: {
+            id: true,
+            content: true,
+            author: { select: { id: true, name: true } },
+          }
+        }
+      },
+    });
+    const originalTweet = tweet?.retweetOf || tweet;
     const unreadCount = await this.notificationsService.getUnreadCount(userId);
     this.notifications.emitToUser(userId, "notifications", {
       summary: {
@@ -88,6 +124,7 @@ export class NotificationsProcessor {
         actor: { id: retweeterId },
         action: 'RETWEETED',
         targetId: tweetId,
+        tweet: originalTweet,
       },
       unreadCount,
     });
@@ -96,14 +133,28 @@ export class NotificationsProcessor {
   @Process("reply-notify")
   async handleReplyNotify(job: any) {
     const { userId, tweetId, replierId } = job.data;
+    console.log('[NOTIFY] Procesando reply-notify', job.data);
     const notification = await this.notificationsService.createNotification({
       userId,
       actorId: replierId,
       action: 'REPLIED',
       targetType: 'TWEET',
       targetId: tweetId,
-      url: `/tweet/${tweetId}`,
     });
+    // Obtener el tweet original y su autor
+    const reply = await this.prisma.tweet.findUnique({
+      where: { id: tweetId },
+      select: {
+        parent: {
+          select: {
+            id: true,
+            content: true,
+            author: { select: { id: true, name: true } },
+          }
+        }
+      },
+    });
+    const originalTweet = reply?.parent;
     const unreadCount = await this.notificationsService.getUnreadCount(userId);
     this.notifications.emitToUser(userId, "notifications", {
       summary: {
@@ -111,6 +162,7 @@ export class NotificationsProcessor {
         actor: { id: replierId },
         action: 'REPLIED',
         targetId: tweetId,
+        tweet: originalTweet,
       },
       unreadCount,
     });

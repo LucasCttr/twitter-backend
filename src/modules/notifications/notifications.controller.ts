@@ -22,10 +22,19 @@ export class NotificationsController {
   async getNotifications(@Req() req: Request, @Query('limit') limit = '20', @Query('cursor') cursor?: string): Promise<NotificationListResponseDto> {
     const userId = (req.user as any)?.id || (req.user as any)?.sub;
     const { items, nextCursor } = await this.notifications.getNotifications(userId, parseInt(limit), cursor);
-    const mappedItems = items.map((item: any) => ({
-      ...item,
-      targetId: item.targetId === null ? undefined : item.targetId,
-    }));
+    const mappedItems = items.map((item: any) => {
+      const { url, ...rest } = item;
+      return {
+        ...rest,
+        targetId: item.targetId === null ? undefined : item.targetId,
+        actor: item.actor ? {
+          id: item.actor.id,
+          name: item.actor.name,
+          email: item.actor.email,
+          profileImage: item.actor.profileImage,
+        } : undefined,
+      };
+    });
     return { items: mappedItems, nextCursor: nextCursor ?? undefined };
   } 
 

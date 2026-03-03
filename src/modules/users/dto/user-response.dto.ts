@@ -9,4 +9,6 @@ export class UserResponseDto {
   isFollowedBy!: boolean;
   // atributo para simplificar la lógica en el frontend, combinando isFollowing e isFollowedBy
   followStatus!: 'none' | 'following' | 'follow_back' | 'mutual' | 'self';
+
+  profileImage?: string; // URL o path de la imagen de perfil
 }
