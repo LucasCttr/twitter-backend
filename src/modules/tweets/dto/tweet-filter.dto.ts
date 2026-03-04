@@ -4,7 +4,7 @@ import { CursorPaginationDto } from '../../../utils/cursor-pagination.dto';
 export class TweetFilterDto extends CursorPaginationDto {
   @IsOptional()
   @IsString()
-  content?: string;
+  q?: string;
 
   @IsOptional()
   @IsUUID()
@@ -22,4 +22,9 @@ export class TweetFilterDto extends CursorPaginationDto {
   @IsOptional()
   @IsString()
   type?: 'tweet' | 'reply' | 'like' | 'retweet';
+
+  // Permite ordenar por 'recent' o 'relevant'
+  @IsOptional()
+  @IsString()
+  sort?: 'recent' | 'relevant';
 }

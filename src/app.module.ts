@@ -6,9 +6,6 @@ import { PrismaModule } from './database/prisma.module.js';
 import { UserController } from './modules/users/user.controller.js';
 import { UserService } from './modules/users/user.service.js';
 import { UserModule } from './modules/users/user.module.js';
-import { SocialService } from './modules/social/social.service';
-import { SocialController } from './modules/social/social.controller.js';
-import { SocialModule } from './modules/social/social.module.js';
 import { FeedModule } from './modules/feed/feed.module';
 import { NotificationsModule } from './modules/notifications/notification.module.js';
 import { MessagesModule } from './modules/messages/messages.module';
@@ -19,7 +16,6 @@ import { MessagesModule } from './modules/messages/messages.module';
     TweetsModule,
     PrismaModule,
     UserModule,
-    SocialModule,
     FeedModule,
     NotificationsModule,
     BullModule.forRoot({

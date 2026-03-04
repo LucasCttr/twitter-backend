@@ -1,4 +1,4 @@
-import { Injectable, Post } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Post } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service.js";
 import { UserFilterDto } from "./dto/user-filter.dto.js";
 import { UserResponseDto } from "./dto/user-response.dto.js";
@@ -7,6 +7,9 @@ import { PaginatedResponse } from "../../utils/pagination-respone.dto.js";
 import { CursorPaginationDto } from '../../utils/cursor-pagination.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import * as bcrypt from 'bcrypt';
+import { FollowNotifyDto } from "../notifications/dto/follow-notify.dto.js";
+import { Queue } from "bull";
+import { InjectQueue } from "@nestjs/bull";
 
 @Injectable()
 export class UserService {
@@ -16,20 +19,35 @@ export class UserService {
     if (isFollowedBy) return 'follow_back' as const;
     return 'none' as const;
   }
-  constructor( private readonly prisma: PrismaService) {}
+  constructor( private readonly prisma: PrismaService, @InjectQueue("notifications") private readonly notificationsQueue: Queue) {}
 
  async getByPagination(filter: UserFilterDto, currentUserId?: string) {
+
    const limit = filter.limit ?? 20;
    const where: any = {};
+   where.deletedAt = null; // Solo usuarios no eliminados
 
-    if (filter.name) {
-      where.name = { contains: filter.name, mode: "insensitive" };
-    }
-
-    if (filter.email) {
-      where.email = { contains: filter.email, mode: "insensitive" };
-    }
-    where.deletedAt = null; // Solo usuarios no eliminados
+   let postFilter: ((u: any) => boolean) | null = null;
+   if (filter.q) {
+     const q = filter.q.toLowerCase();
+     if (q.includes('@')) {
+       // Si contiene @, buscar solo por la parte local del email en el email
+       const emailLocal = q.split('@')[0];
+       where.email = { contains: emailLocal, mode: 'insensitive' };
+       postFilter = (u) => u.email && u.email.toLowerCase().split('@')[0].includes(emailLocal);
+     } else {
+       // Si no contiene @, buscar por name o por la parte local del email (antes del @)
+       where.OR = [
+         { name: { contains: q, mode: 'insensitive' } },
+         { email: { contains: q, mode: 'insensitive' } },
+       ];
+       postFilter = (u) => {
+         const nameMatch = u.name && u.name.toLowerCase().includes(q);
+         const emailLocal = u.email ? u.email.toLowerCase().split('@')[0] : '';
+         return nameMatch || emailLocal.includes(q);
+       };
+     }
+   }
 
     // Exclude the authenticated user from search results when provided
     if (currentUserId) {
@@ -42,10 +60,11 @@ export class UserService {
         id: true,
         name: true,
         email: true,
+        profileImage: true,
         createdAt: true,
         _count: { select: { followers: true, following: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: filter.sort === 'followers' ? undefined : { createdAt: 'desc' },
       take: limit + 1,
     };
 
@@ -54,7 +73,18 @@ export class UserService {
       findOptions.skip = 1;
     }
 
-    const users = await this.prisma.user.findMany(findOptions);
+    let users = await this.prisma.user.findMany(findOptions);
+    if (postFilter) {
+      users = users.filter(postFilter);
+    }
+    if (filter.sort === 'followers') {
+      users = users.sort((a, b) => {
+        const aFollowers = (a as any)._count?.followers ?? 0;
+        const bFollowers = (b as any)._count?.followers ?? 0;
+        if (bFollowers !== aFollowers) return bFollowers - aFollowers;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    }
 
     let nextCursor: string | null = null;
     let returned = users;
@@ -74,6 +104,8 @@ export class UserService {
       const summary = returned.map(u => ({
         id: u.id,
         name: u.name,
+        email: u.email,
+        profileImage: u.profileImage,
         isFollowing: iFollowSet.has(u.id),
         isFollowedBy: theyFollowMeSet.has(u.id),
         followStatus: this.toFollowStatus(iFollowSet.has(u.id), theyFollowMeSet.has(u.id)),
@@ -85,6 +117,8 @@ export class UserService {
     const summary = returned.map(u => ({
       id: u.id,
       name: u.name,
+      email: u.email,
+      profileImage: u.profileImage,
       isFollowing: false,
       isFollowedBy: false,
       followStatus: this.toFollowStatus(false, false),
@@ -158,7 +192,11 @@ export class UserService {
    const limit = pagination?.limit ?? 20;
    const findOptions: any = {
      where: { following: { some: { followingId: userId } }, deletedAt: null },
-     select: { id: true, name: true },
+     select: {
+       id: true,
+       name: true,
+       _count: { select: { followers: true, following: true } },
+     },
      orderBy: { createdAt: 'desc' },
      take: limit + 1,
    };
@@ -206,6 +244,7 @@ export class UserService {
         isFollowing,
         isFollowedBy,
         followStatus: this.toFollowStatus(isFollowing, isFollowedBy),
+        // followersCount: u._count?.followers ?? undefined, // Si necesitas exponerlo
       } as UserSummaryDto);
      }
    }
@@ -241,7 +280,11 @@ export class UserService {
    const limit = pagination?.limit ?? 20;
    const findOptions: any = {
      where: { followers: { some: { followerId: userId } }, deletedAt: null },
-     select: { id: true, name: true },
+     select: {
+       id: true,
+       name: true,
+       _count: { select: { followers: true, following: true } },
+     },
      orderBy: { createdAt: 'desc' },
      take: limit + 1,
    };
@@ -288,10 +331,76 @@ export class UserService {
         isFollowing,
         isFollowedBy,
         followStatus: this.toFollowStatus(isFollowing, isFollowedBy),
+        // followersCount: u._count?.followers ?? undefined, // Si necesitas exponerlo
       } as UserSummaryDto);
      }
    }
 
    return new PaginatedResponse(mapped, limit, nextCursor);
  }
+
+ // FOLLOW/UNFOLLOW
+  async followUser(userId: string, targetUserId: string) {
+    if (userId === targetUserId) {
+      throw new BadRequestException("You cannot follow yourself");
+    }
+
+    const existingFollow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (existingFollow) {
+      throw new BadRequestException("You are already following this user");
+    }
+
+    const created = await this.prisma.follow.create({
+      data: {
+        followerId: userId,
+        followingId: targetUserId,
+      },
+    });
+
+    const payload: FollowNotifyDto = {
+      userId: targetUserId, // receptor
+      followerId: userId, // quien siguió
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.notificationsQueue.add("follow-notify", payload, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: true,
+    });
+
+    return created;
+  }
+
+  async unfollowUser(userId: string, targetUserId: string) {
+    const existingFollow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (!existingFollow) {
+      throw new NotFoundException("Follow relation not found");
+    }
+
+    return this.prisma.follow.delete({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
+    });
+  }
 }

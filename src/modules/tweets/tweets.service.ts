@@ -314,8 +314,8 @@ export class TweetsService {
 
     // Construye el objeto where solo con filtros válidos
     const where: any = {};
-    if (pagination.content) {
-      where.content = { contains: pagination.content };
+    if (pagination.q) {
+      where.content = { contains: pagination.q };
     }
     if (pagination.authorId) {
       where.authorId = pagination.authorId;
@@ -379,6 +379,13 @@ export class TweetsService {
               email: true,
             },
           },
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
+              retweets: true,
+            },
+          },
         },
       },
       parent: {
@@ -388,6 +395,13 @@ export class TweetsService {
               id: true,
               name: true,
               email: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
+              retweets: true,
             },
           },
         },
@@ -431,8 +445,14 @@ export class TweetsService {
 
     const findOptions: any = {
       where,
-      include,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }], // orden determinista
+      include: {
+        ...include,
+      },
+      // Siempre ordenar por recientes en la query, el orden por relevancia es solo en JS
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
       take: limit + 1,
     };
 
@@ -441,9 +461,39 @@ export class TweetsService {
       findOptions.skip = 1;
     }
 
-    const tweets = await this.prisma.tweet.findMany(findOptions);
+    let tweets = await this.prisma.tweet.findMany(findOptions);
 
-    // Nueva lógica igual a FeedResponseDto
+    // Si algún tweet no tiene _count, obtenerlo manualmente (fallback defensivo)
+    tweets = await Promise.all(
+      tweets.map(async (t) => {
+        const tweetWithCount = t as typeof t & { _count?: { likes: number; replies: number; retweets: number } };
+        if (typeof tweetWithCount._count === 'undefined') {
+          const counts = await this.prisma.tweet.findUnique({
+            where: { id: t.id },
+            select: { _count: { select: { likes: true, replies: true, retweets: true } } },
+          });
+          return { ...t, _count: counts?._count ?? { likes: 0, replies: 0, retweets: 0 } };
+        }
+        return tweetWithCount;
+      })
+    );
+
+    // Si sort = 'relevant', ordenar en memoria por suma de likes+retweets+replies
+    if (pagination.sort === 'relevant') {
+      tweets = tweets
+        .map(
+          (t) =>
+            t as typeof t & { _count: { likes: number; replies: number; retweets: number } }
+        )
+        .sort((a, b) => {
+          const aScore = (a._count?.likes ?? 0) + (a._count?.retweets ?? 0) + (a._count?.replies ?? 0);
+          const bScore = (b._count?.likes ?? 0) + (b._count?.retweets ?? 0) + (b._count?.replies ?? 0);
+          if (bScore !== aScore) return bScore - aScore;
+          // Si hay empate, usar fecha de creación
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        });
+    }
+
     let nextCursor: string | null = null;
     let returned = tweets;
     if (tweets.length > limit) {

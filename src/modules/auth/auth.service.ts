@@ -70,6 +70,8 @@ export class AuthService {
     // Decodificar para obtener expiración
     const decoded: any = verifyRefreshToken(token);
     const expiresAt = new Date(decoded.exp * 1000);
+    // Eliminar todos los refresh tokens previos de este usuario
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
     await this.prisma.refreshToken.create({
       data: {
         token,

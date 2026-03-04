@@ -1,6 +1,11 @@
 import { CursorPaginationDto } from "../../../utils/cursor-pagination.dto";
 
+import { IsOptional, IsString } from 'class-validator';
+
 export class UserFilterDto extends CursorPaginationDto {
-    name?: string;
-    email?: string;
+    q?: string; // Búsqueda por nombre o email
+
+    @IsOptional()
+    @IsString()
+    sort?: 'recent' | 'followers';
 }

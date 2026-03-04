@@ -8,8 +8,10 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Delete,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
+
 import { UserFilterDto } from "./dto/user-filter.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guards";
@@ -25,7 +27,24 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly tweetService: TweetsService,
+
   ) {}
+  // FOLLOW endpoints (migrados de SocialController)
+  @Post(':userId/follow')
+  follow(
+    @CurrentUser() user: JwtPayload,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ) {
+    return this.userService.followUser(user.id, userId);
+  }
+
+  @Delete(':userId/follow')
+  unfollow(
+    @CurrentUser() user: JwtPayload,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+  ) {
+    return this.userService.unfollowUser(user.id, userId);
+  }
 
   @Get()
   getByPagination(@Query() filter: UserFilterDto, @CurrentUser() user: JwtPayload) {
