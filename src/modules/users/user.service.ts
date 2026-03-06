@@ -52,6 +52,14 @@ export class UserService {
     // Exclude the authenticated user from search results when provided
     if (currentUserId) {
       where.id = { not: currentUserId };
+      // Optionally exclude users the current user already follows
+      if ((filter as any)?.excludeFollowed) {
+        where.NOT = {
+          followers: {
+            some: { followerId: currentUserId },
+          },
+        };
+      }
     }
 
     const findOptions: any = {
