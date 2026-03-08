@@ -1,6 +1,7 @@
 import { Tweet } from "@prisma/client";
 
 export class TweetResponseDto {
+  bookmarked: boolean;
   id!: string;
   content: string | null;
   createdAt!: Date;
@@ -65,6 +66,8 @@ export class TweetResponseDto {
     // Flags if the current user liked/retweeted this tweet (Prisma include expected)
     this.likedByCurrentUser = tweet.likes ? tweet.likes.length > 0 : undefined;
     this.retweetedByCurrentUser = tweet.retweets ? tweet.retweets.length > 0 : undefined;
+    // Flag for bookmark by current user (always boolean)
+    this.bookmarked = !!(tweet.bookmarks && tweet.bookmarks.length > 0);
 
     this.createdAt = tweet.createdAt;
     this.replies = tweet.replies ? tweet.replies.map((r: any) => new TweetResponseDto(r, opts)) : undefined;

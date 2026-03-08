@@ -194,6 +194,10 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      include.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       include.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
@@ -202,11 +206,19 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      include.retweetOf.include.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       include.retweetOf.include.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
       };
       include.parent.include.likes = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
+      include.parent.include.bookmarks = {
         where: { userId: currentUserId },
         select: { userId: true },
       };
@@ -252,6 +264,10 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      replyInclude.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       replyInclude.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
@@ -260,11 +276,19 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      replyInclude.retweetOf.include.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       replyInclude.retweetOf.include.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
       };
       replyInclude.parent.include.likes = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
+      replyInclude.parent.include.bookmarks = {
         where: { userId: currentUserId },
         select: { userId: true },
       };
@@ -414,6 +438,10 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      include.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       include.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
@@ -426,6 +454,10 @@ export class TweetsService {
         where: { userId: currentUserId },
         select: { userId: true },
       };
+      include.retweetOf.include.bookmarks = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
       include.retweetOf.include.retweets = {
         where: { authorId: currentUserId },
         select: { id: true },
@@ -434,6 +466,10 @@ export class TweetsService {
         select: { likes: true, replies: true, retweets: true },
       };
       include.parent.include.likes = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      };
+      include.parent.include.bookmarks = {
         where: { userId: currentUserId },
         select: { userId: true },
       };
@@ -556,6 +592,7 @@ export class TweetsService {
         author: { select: { id: true, name: true, email: true } },
         _count: { select: { likes: true, replies: true, retweets: true } },
         likes: { where: { userId }, select: { userId: true } },
+        bookmarks: { where: { userId }, select: { userId: true } },
         retweets: {
           where: { authorId: userId, deletedAt: null },
           select: { id: true },
@@ -564,12 +601,14 @@ export class TweetsService {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
         parent: {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
       },
@@ -638,6 +677,7 @@ export class TweetsService {
         author: { select: { id: true, name: true, email: true } },
         _count: { select: { likes: true, replies: true, retweets: true } },
         likes: { where: { userId }, select: { userId: true } },
+        bookmarks: { where: { userId }, select: { userId: true } },
         retweets: {
           where: { authorId: userId, deletedAt: null },
           select: { id: true },
@@ -646,12 +686,14 @@ export class TweetsService {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
         parent: {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
       },
@@ -696,6 +738,7 @@ export class TweetsService {
           author: { select: { id: true, name: true, email: true } },
           _count: { select: { likes: true, replies: true, retweets: true } },
           likes: { where: { userId }, select: { userId: true } },
+          bookmarks: { where: { userId }, select: { userId: true } },
           retweets: { where: { authorId: userId }, select: { id: true } },
           retweetOf: {
             include: {
@@ -703,6 +746,7 @@ export class TweetsService {
               _count: {
                 select: { likes: true, replies: true, retweets: true },
               },
+              bookmarks: { where: { userId }, select: { userId: true } },
             },
           },
           parent: {
@@ -711,6 +755,7 @@ export class TweetsService {
               _count: {
                 select: { likes: true, replies: true, retweets: true },
               },
+              bookmarks: { where: { userId }, select: { userId: true } },
             },
           },
         },
@@ -738,6 +783,7 @@ export class TweetsService {
         author: { select: { id: true, name: true, email: true } },
         _count: { select: { likes: true, replies: true, retweets: true } },
         likes: { where: { userId }, select: { userId: true } },
+        bookmarks: { where: { userId }, select: { userId: true } },
         retweets: { where: { authorId: userId }, select: { id: true } },
         retweetOf: {
           include: {
@@ -773,6 +819,7 @@ export class TweetsService {
         author: { select: { id: true, name: true, email: true } },
         _count: { select: { likes: true, replies: true, retweets: true } },
         likes: { where: { userId }, select: { userId: true } },
+        bookmarks: { where: { userId }, select: { userId: true } },
         retweets: { where: { authorId: userId }, select: { id: true } },
         retweetOf: {
           include: {
@@ -865,6 +912,7 @@ export class TweetsService {
               },
             },
             likes: { where: { userId }, select: { userId: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
             retweets: { where: { authorId: userId }, select: { id: true } },
           },
         },
@@ -928,6 +976,7 @@ export class TweetsService {
         },
         // include likes/retweets for current user to compute flags
         likes: { where: { userId }, select: { userId: true } },
+        bookmarks: { where: { userId }, select: { userId: true } },
         retweets: { where: { authorId: userId }, select: { id: true } },
         _count: {
           select: {
@@ -946,6 +995,7 @@ export class TweetsService {
               },
             },
             likes: { where: { userId }, select: { userId: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
             retweets: { where: { authorId: userId }, select: { id: true } },
             _count: {
               select: {
@@ -975,6 +1025,7 @@ export class TweetsService {
                   },
                 },
                 likes: { where: { userId }, select: { userId: true } },
+                  bookmarks: { where: { userId }, select: { userId: true } },
                 retweets: { where: { authorId: userId }, select: { id: true } },
                 _count: {
                   select: { likes: true, replies: true, retweets: true },
@@ -993,6 +1044,7 @@ export class TweetsService {
               },
             },
             likes: { where: { userId }, select: { userId: true } },
+              bookmarks: { where: { userId }, select: { userId: true } },
             retweets: { where: { authorId: userId }, select: { id: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
           },
