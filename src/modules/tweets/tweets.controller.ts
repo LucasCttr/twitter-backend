@@ -96,6 +96,4 @@ export class TweetsController {
   ) {
     return this.tweetsService.deleteReply(user.id, tweetId)
   }
-
-
 }

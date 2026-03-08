@@ -841,6 +841,61 @@ export class TweetsService {
     });
   }
 
+  // Obtiene tweets guardados (bookmarks) del usuario, paginados por Bookmark.createdAt
+  async getBookmarkedTweets(userId: string, take = 20, cursor?: string) {
+    const limit = take;
+
+    const findOptions: any = {
+      where: { userId },
+      include: {
+        tweet: {
+          include: {
+            author: { select: { id: true, name: true, email: true } },
+            _count: { select: { likes: true, replies: true, retweets: true } },
+            retweetOf: {
+              include: {
+                author: { select: { id: true, name: true, email: true } },
+                _count: { select: { likes: true, replies: true, retweets: true } },
+              },
+            },
+            parent: {
+              include: {
+                author: { select: { id: true, name: true, email: true } },
+                _count: { select: { likes: true, replies: true, retweets: true } },
+              },
+            },
+            likes: { where: { userId }, select: { userId: true } },
+            retweets: { where: { authorId: userId }, select: { id: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+    };
+
+    if (cursor) {
+      findOptions.cursor = { id: cursor };
+      findOptions.skip = 1;
+    }
+
+    const bookmarks = await this.prisma.bookmark.findMany(findOptions);
+
+    let nextCursor: string | null = null;
+    let returned = bookmarks;
+    if (bookmarks.length > limit) {
+      nextCursor = bookmarks[limit].id;
+      returned = bookmarks.slice(0, limit);
+    }
+
+    const tweets = returned.map((b: any) => b.tweet);
+
+    return new PaginatedResponse(
+      tweets.map((t) => new TweetResponseDto(t, { includeParent: true, includeRetweet: true })),
+      limit,
+      nextCursor,
+    );
+  }
+
   // Obtiene tweets de un usuario y sus seguidos (feed)
   async getFeed(
     userId: string,

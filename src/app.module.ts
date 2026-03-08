@@ -9,6 +9,9 @@ import { UserModule } from './modules/users/user.module.js';
 import { FeedModule } from './modules/feed/feed.module';
 import { NotificationsModule } from './modules/notifications/notification.module.js';
 import { MessagesModule } from './modules/messages/messages.module';
+import { TrendingController } from './modules/trending/trending.controller';
+import { TrendingService } from './modules/trending/trending.service';
+import { TrendingModule } from './modules/trending/trending.module';
 
 @Module({
   imports: [
@@ -25,10 +28,11 @@ import { MessagesModule } from './modules/messages/messages.module';
       },
     }),
     MessagesModule,
+    TrendingModule,
   ],
   // controllers: [UserController, SocialController],
   // providers: [UserService],
-  controllers: [],
-  providers: [],
+  controllers: [TrendingController],
+  providers: [TrendingService],
 })
 export class AppModule {}

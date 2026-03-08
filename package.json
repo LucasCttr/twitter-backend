@@ -37,6 +37,9 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "zod": "^4.3.6"
+    ,
+    "axios": "^1.4.0",
+    "cheerio": "^1.0.0-rc.12"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.16",
