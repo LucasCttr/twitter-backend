@@ -212,7 +212,9 @@ export class UserService {
      select: {
        id: true,
        name: true,
-       _count: { select: { followers: true, following: true } },
+        email: true,
+        profileImage: true,
+        _count: { select: { followers: true, following: true } },
      },
      orderBy: { createdAt: 'desc' },
      take: limit + 1,
@@ -247,6 +249,8 @@ export class UserService {
         mapped.push({
           id: u.id,
           name: u.name,
+          email: (u as any).email,
+          profileImage: (u as any).profileImage,
           isFollowing: false,
           isFollowedBy: false,
           followStatus: 'self',
@@ -259,6 +263,8 @@ export class UserService {
       mapped.push({
         id: u.id,
         name: u.name,
+        email: (u as any).email,
+        profileImage: (u as any).profileImage,
         isFollowing,
         isFollowedBy,
         followStatus: this.toFollowStatus(isFollowing, isFollowedBy),
@@ -302,7 +308,9 @@ export class UserService {
      select: {
        id: true,
        name: true,
-       _count: { select: { followers: true, following: true } },
+        email: true,
+        profileImage: true,
+        _count: { select: { followers: true, following: true } },
      },
      orderBy: { createdAt: 'desc' },
      take: limit + 1,
@@ -336,6 +344,8 @@ export class UserService {
         mapped.push({
           id: u.id,
           name: u.name,
+          email: (u as any).email,
+          profileImage: (u as any).profileImage,
           isFollowing: false,
           isFollowedBy: false,
           followStatus: 'self',
@@ -348,6 +358,8 @@ export class UserService {
       mapped.push({
         id: u.id,
         name: u.name,
+        email: (u as any).email,
+        profileImage: (u as any).profileImage,
         isFollowing,
         isFollowedBy,
         followStatus: this.toFollowStatus(isFollowing, isFollowedBy),

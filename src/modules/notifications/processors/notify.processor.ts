@@ -65,12 +65,13 @@ export class NotificationsProcessor {
   async handleFollowNotify(job: Job<FollowNotifyDto>) {
     const { userId, followerId } = job.data;
     console.log('[NotificationsProcessor] Procesando follow:', { userId, followerId });
+    // Para FOLLOWED el `targetId` no debe apuntar a `Tweet.id` (la columna targetId está ligada a Tweet),
+    // así que no lo incluimos aquí para evitar violaciones de FK.
     const notification = await this.notificationsService.createNotification({
       userId,
       actorId: followerId,
       action: 'FOLLOWED',
       targetType: 'USER',
-      targetId: followerId,
     });
     const unreadCount = await this.notificationsService.getUnreadCount(userId);
     console.log('[NotificationsProcessor] Emitiendo notificación de follow', {
@@ -83,7 +84,6 @@ export class NotificationsProcessor {
         id: notification.id,
         actor: { id: followerId },
         action: 'FOLLOWED',
-        targetId: followerId,
       },
       unreadCount,
     });

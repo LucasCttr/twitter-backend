@@ -22,7 +22,6 @@ import { CurrentUser } from "../../utils/current-user.decorator";
 import { JwtPayload } from "jsonwebtoken";
 
 @Controller("users")
-@UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -34,6 +33,7 @@ export class UserController {
   // - Perfil y listados paginados
 
   // FOLLOW endpoints (migrados de SocialController)
+  @UseGuards(JwtAuthGuard)
   @Post(':userId/follow')
   // Seguir a un usuario
   follow(
@@ -43,6 +43,7 @@ export class UserController {
     return this.userService.followUser(user.id, userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':userId/follow')
   // Dejar de seguir a un usuario
   unfollow(
@@ -54,10 +55,12 @@ export class UserController {
 
   @Get()
   // Listado de usuarios con filtros y paginación
+  @UseGuards(JwtAuthGuard)
   getByPagination(@Query() filter: UserFilterDto, @CurrentUser() user: JwtPayload) {
     return this.userService.getByPagination(filter, user?.id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('me')
   // Actualizar perfil del usuario autenticado
   updateMe(@Body() dto: UpdateUserDto, @CurrentUser() user: JwtPayload) {
@@ -84,24 +87,26 @@ export class UserController {
   }
 
   @Get(":id/followers")
-  @UseGuards(JwtAuthGuard)
   getFollowers(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Query() pagination: CursorPaginationDto,
     @CurrentUser() user: JwtPayload,
   ) {
     // Listar seguidores del usuario (paginado)
+    // No requiere JWT para obtener la lista de seguidores de un perfil
     return this.userService.getFollowers(id, pagination, user?.id);
   }
 
   @Get(":id/following")
-  @UseGuards(JwtAuthGuard)
   getFollowing(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Query() pagination: CursorPaginationDto,
     @CurrentUser() user: JwtPayload,
   ) {
     // Listar usuarios a los que sigue (paginado)
+    // No requiere JWT para obtener la lista de usuarios seguidos por un perfil
     return this.userService.getFollowing(id, pagination, user?.id);
   }
+
+  
 }

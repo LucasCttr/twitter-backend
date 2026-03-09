@@ -389,11 +389,15 @@ export class TweetsService {
           where.retweetOfId = { not: null };
           break;
         case 'like':
-          // Solo tweets que el usuario ha dado like (requiere currentUserId)
-          if (currentUserId) {
-            where.likes = {
-              some: { userId: currentUserId },
-            };
+          // Tweets que un usuario ha marcado con like.
+          // Comportamiento: si el cliente pasa `authorId` en la query junto con `type=like`,
+          // lo interpretamos como el id del usuario que hizo el like (para mantener compatibilidad
+          // sin cambiar el DTO). Si no se pasa `authorId`, caerá en `currentUserId`.
+          const likerId = (pagination as any).authorId ?? currentUserId;
+          if (likerId) {
+            where.likes = { some: { userId: likerId } };
+            // Evitar filtrar por authorId en los tweets (porque lo hemos usado como likerId)
+            delete where.authorId;
           }
           break;
       }
