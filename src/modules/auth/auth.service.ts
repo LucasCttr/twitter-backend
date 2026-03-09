@@ -8,6 +8,7 @@ import { addMinutes } from 'date-fns';
 
 @Injectable()
 export class AuthService {
+  // Servicio de autenticación: registro, validación y manejo de refresh tokens
   constructor(private readonly prisma: PrismaService) {}
 
   async registerUser(dto: RegisterDto) {
@@ -70,7 +71,8 @@ export class AuthService {
     // Decodificar para obtener expiración
     const decoded: any = verifyRefreshToken(token);
     const expiresAt = new Date(decoded.exp * 1000);
-    // Eliminar todos los refresh tokens previos de este usuario
+    // Al crear un nuevo refresh token, invalidamos (borramos) los previos del usuario
+    // para mantener una única sesión válida por usuario en este flujo.
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
     await this.prisma.refreshToken.create({
       data: {
@@ -89,9 +91,8 @@ export class AuthService {
     } catch {
       return null;
     }
-    const dbToken = await this.prisma.refreshToken.findUnique({
-      where: { token },
-    });
+    // Verificar que el token exista en la base de datos y no esté revocado ni expirado
+    const dbToken = await this.prisma.refreshToken.findUnique({ where: { token } });
     if (!dbToken || dbToken.revoked || dbToken.expiresAt < new Date()) {
       return null;
     }
@@ -99,9 +100,8 @@ export class AuthService {
   }
 
   async revokeRefreshToken(token: string) {
-    await this.prisma.refreshToken.update({
-      where: { token },
-      data: { revoked: true },
-    });
+    // Marcar como revocado el refresh token en la base de datos.
+    // Esto evita que se pueda usar nuevamente para obtener JWTs.
+    await this.prisma.refreshToken.update({ where: { token }, data: { revoked: true } });
   }
 }

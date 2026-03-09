@@ -11,6 +11,7 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('unread')
+  // Devuelve la cantidad de notificaciones no leídas para el usuario autenticado
   async getUnreadCount(@Req() req: Request): Promise<UnreadCountResponseDto> {
     const userId = (req.user as any)?.id || (req.user as any)?.sub;
     const unread = await this.notifications.getUnreadCount(userId);
@@ -19,6 +20,7 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
+  // Listar notificaciones del usuario con paginación
   async getNotifications(@Req() req: Request, @Query('limit') limit = '20', @Query('cursor') cursor?: string): Promise<NotificationListResponseDto> {
     const userId = (req.user as any)?.id || (req.user as any)?.sub;
     const { items, nextCursor } = await this.notifications.getNotifications(userId, parseInt(limit), cursor);
@@ -36,10 +38,11 @@ export class NotificationsController {
       };
     });
     return { items: mappedItems, nextCursor: nextCursor ?? undefined };
-  } 
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('mark-read')
+  // Marcar notificaciones como leídas. Si no se pasan ids, marca todas como leídas.
   async markRead(@Req() req: Request, @Body() body: MarkReadDto): Promise<MarkReadResponseDto> {
     const userId = (req.user as any)?.id || (req.user as any)?.sub;
     const unread = await this.notifications.markRead(userId, body.ids);

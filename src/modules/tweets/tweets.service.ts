@@ -1,11 +1,10 @@
 import {
   BadRequestException,
-  Get,
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Post,
 } from "@nestjs/common";
+
 import { PrismaService } from "../../database/prisma.service.js";
 import { CreateTweetDto } from "./dto/create-tweet.dto.js";
 import { TweetResponseDto } from "./dto/tweet-response.dto.js";
@@ -16,6 +15,8 @@ import { FeedResponseDto } from "../feed/dto/feed-query.dto.js";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
 
+// Servicio: manejo central de tweets y acciones sociales (likes, retweets, bookmarks, feed)
+// - Mantener las consultas optimizadas y devolver DTOs listos para la capa de controlador
 @Injectable()
 export class TweetsService {
   constructor(
@@ -59,12 +60,18 @@ export class TweetsService {
     authorId: string,
     data: { content?: string; parentId?: string; retweetOfId?: string },
   ) {
+    // Validaciones simples: un tweet no puede ser reply y retweet a la vez.
+    // - `parentId` indica que es reply (respuesta a otro tweet)
+    // - `retweetOfId` indica que es un retweet (reenvío de otro tweet)
     if (data.parentId && data.retweetOfId) {
-      throw new BadRequestException(
-        "Cannot reply and retweet at the same time",
-      );
+      throw new BadRequestException("Cannot reply and retweet at the same time");
     }
 
+    // Crear el tweet en la base de datos. Incluimos relaciones útiles para devolver
+    // un objeto completo al cliente sin pedir llamadas adicionales:
+    // - `author`: datos mínimos del autor
+    // - `_count`: contadores para likes/replies/retweets (útiles para orden y UI)
+    // - `retweetOf` y `parent`: relaciones anidadas con su propio autor y contadores
     const tweet = await this.prisma.tweet.create({
       data: {
         content: data.content,
@@ -136,6 +143,10 @@ export class TweetsService {
     repliesPagination?: CursorPaginationDto,
     currentUserId?: string,
   ): Promise<TweetResponseDto> {
+    // Construir el objeto `include` para la consulta Prisma.
+    // - Aquí se prepara qué relaciones se van a traer (author, counts, retweetOf, parent)
+    // - Si `currentUserId` está presente, añadimos filtros para likes/retweets/bookmarks del usuario
+    // Esto permite que el DTO pueda calcular flags como `likedByCurrentUser` o `bookmarked`.
     // Construir include para likes/retweets del usuario actual
     const include: any = {
       author: {
@@ -236,6 +247,8 @@ export class TweetsService {
       throw new BadRequestException("Tweet not found");
     }
 
+    // Construir el DTO principal a partir del resultado de la consulta.
+    // El constructor de `TweetResponseDto` se encarga de extraer counters y flags.
     const dto = new TweetResponseDto(tweet, {
       includeParent: includeRelated,
       includeRetweet: includeRelated,
@@ -259,6 +272,10 @@ export class TweetsService {
         },
       },
     };
+    // Para replies aplicamos paginación cursor-based de primer nivel:
+    // - `take = limit + 1` nos permite detectar si existe una página siguiente
+    // - No incluimos `parent` completo en las replies mapeadas al DTO para evitar recursión profunda
+    // - Los includes filtrados por `currentUserId` permitirán que cada reply tenga flags booleanos
     if (currentUserId) {
       replyInclude.likes = {
         where: { userId: currentUserId },
@@ -314,6 +331,7 @@ export class TweetsService {
       nextCursor = replies[limit].id;
       returned = replies.slice(0, limit);
     }
+    // Mapear las replies al DTO (nivel 1). Se evita incluir `parent` en estas replies para no recursar mucho.
     dto.replies = returned.map(
       (r) =>
         new TweetResponseDto(r, {
@@ -332,7 +350,9 @@ export class TweetsService {
     includeRelated = true,
     currentUserId?: string,
   ) {
-    // Cursor-based pagination (no offset)
+    // Construir filtros `where` según los parámetros recibidos.
+    // - `q`, `authorId`, `parentId`, `retweetOfId` y `type` influyen en la condición
+    // - `deletedAt` se fija a null para excluir tweets eliminados
     const limit = pagination.limit ?? 20;
     const deletedAt = null; // Solo tweets no eliminados
 
@@ -352,7 +372,7 @@ export class TweetsService {
     }
     where.deletedAt = deletedAt;
 
-    // Filtrado por tipo
+    // Filtrado por tipo: ajustar `where` según si se piden tweets, replies, retweets o likes
     if (pagination.type) {
       switch (pagination.type) {
         case 'tweet':
@@ -379,6 +399,9 @@ export class TweetsService {
       }
     }
 
+    // Preparar `include` para traer relaciones necesarias (author, counters y relaciones anidadas).
+    // Si `currentUserId` está presente, añadimos includes filtrados para calcular flags por usuario
+    // (`likedByCurrentUser`, `bookmarked`, `retweetedByCurrentUser`) sin consultas adicionales.
     const include: any = {
       author: {
         select: {
@@ -432,7 +455,7 @@ export class TweetsService {
       },
     };
 
-    // Si se proporciona currentUserId, incluye relaciones para calcular likedByCurrentUser y retweetedByCurrentUser
+    // Si hay `currentUserId`, incluir likes/retweets/bookmarks filtrados por ese usuario
     if (currentUserId) {
       include.likes = {
         where: { userId: currentUserId },
@@ -497,9 +520,12 @@ export class TweetsService {
       findOptions.skip = 1;
     }
 
+    // Ejecutar la consulta principal con los filtros e includes construidos.
+    // Usamos `take = limit + 1` para detectar si hay una página siguiente (nextCursor).
     let tweets = await this.prisma.tweet.findMany(findOptions);
 
-    // Si algún tweet no tiene _count, obtenerlo manualmente (fallback defensivo)
+    // Si algún tweet no tiene `_count` (fallback), hacemos una consulta adicional por ese tweet
+    // para obtener los contadores. Esto protege contra drivers/versión de Prisma que no rellenen `_count`.
     tweets = await Promise.all(
       tweets.map(async (t) => {
         const tweetWithCount = t as typeof t & { _count?: { likes: number; replies: number; retweets: number } };
@@ -514,7 +540,8 @@ export class TweetsService {
       })
     );
 
-    // Si sort = 'relevant', ordenar en memoria por suma de likes+retweets+replies
+    // Si se solicitó orden por relevancia, ordenar en memoria usando los contadores
+    // La puntuación es la suma simple de likes + retweets + replies. En caso de empate, usar fecha.
     if (pagination.sort === 'relevant') {
       tweets = tweets
         .map(
@@ -530,6 +557,9 @@ export class TweetsService {
         });
     }
 
+    // Aplicar lógica de paginación cursor-based para cortar el conjunto y determinar `nextCursor`.
+    // Observación: la paginación se calcula sobre el resultado ordenado; cuando `sort==='relevant'`
+    // se hace el ordenamiento en memoria (no en SQL) y luego se corta a `limit`.
     let nextCursor: string | null = null;
     let returned = tweets;
     if (tweets.length > limit) {
@@ -537,6 +567,8 @@ export class TweetsService {
       nextCursor = returned[returned.length - 1].id;
     }
 
+    // Mapear los tweets a DTOs. `TweetResponseDto` lee los includes (likes, bookmarks, retweets)
+    // para establecer flags booleanos por usuario.
     return new PaginatedResponse(
       returned.map(
         (t) =>
@@ -552,6 +584,8 @@ export class TweetsService {
 
   // Soft delete: marca el tweet como eliminado sin borrarlo de la base de datos
   async delete(id: string, authorId: string) {
+    // Validar existencia y permisos antes de marcar como eliminado
+    // Esta función realiza un borrado lógico (soft-delete) estableciendo `deletedAt`.
     const tweet = await this.prisma.tweet.findUnique({ where: { id } });
     if (!tweet) {
       throw new NotFoundException("Tweet not found");
@@ -571,6 +605,8 @@ export class TweetsService {
 
   // borra un retweet (que es un tweet con retweetOfId) donde `retweetOfId` es el id del tweet original y `userId` es el autor del retweet
   async undoRetweet(userId: string, tweetId: string) {
+    // Buscar el retweet creado por el usuario sobre el tweet original
+    // Si existe, eliminamos esa fila (hard-delete) ya que los retweets se representan como tweets independientes
     const retweet = await this.prisma.tweet.findFirst({
       where: {
         authorId: userId,
@@ -583,9 +619,9 @@ export class TweetsService {
       throw new NotFoundException("Retweet not found");
     }
 
-    // Hard-delete the retweet (only for retweets we remove the row)
+    // Eliminar físicamente el retweet del usuario
     await this.prisma.tweet.delete({ where: { id: retweet.id } });
-    // Return the updated original tweet DTO (with flags for current user)
+    // Recuperar el tweet original actualizado con includes para reconstruir el DTO con flags
     const updated = await this.prisma.tweet.findUnique({
       where: { id: tweetId },
       include: {
@@ -622,6 +658,7 @@ export class TweetsService {
 
   // borra un comentario (child tweet) donde `parentId` es el id del tweet padre y `userId` es el autor del comentario
   async deleteReply(userId: string, parentId: string) {
+    // Buscar el reply creado por el usuario y delegar al método `delete` para aplicar borrado lógico
     const reply = await this.prisma.tweet.findFirst({
       where: {
         authorId: userId,
@@ -647,9 +684,10 @@ export class TweetsService {
       throw new BadRequestException("Tweet already retweeted");
     }
 
+    // Crear el retweet como un tweet independiente con `retweetOfId` apuntando al original
     const created = await this.createTweet(userId, { retweetOfId: tweetId });
 
-    // Notificar al autor del tweet original
+    // Notificar al autor del tweet original (si procede). Evitar notificar cuando el autor sea el mismo usuario.
     const original = await this.prisma.tweet.findUnique({
       where: { id: tweetId },
       select: { authorId: true },
@@ -670,7 +708,8 @@ export class TweetsService {
       });
     }
 
-    // Fetch the created retweet with includes so the DTO contains flags for current user
+    // Recuperar el retweet creado con los includes necesarios para construir el DTO.
+    // Incluimos likes/bookmarks filtrados por `userId` para que el DTO marque `bookmarked`/`liked`.
     const createdFull = await this.prisma.tweet.findUnique({
       where: { id: created.id },
       include: {
@@ -707,7 +746,7 @@ export class TweetsService {
 
   // LIKE / UNLIKE moved from SocialService
   async like(userId: string, tweetId: string) {
-    // Prevent duplicate likes
+    // Evitar likes duplicados
     const existing = await this.prisma.like.findUnique({
       where: { userId_tweetId: { userId, tweetId } },
     });
@@ -716,6 +755,7 @@ export class TweetsService {
       throw new BadRequestException("Tweet already liked");
     }
 
+    // Crear el like en la tabla. Esto es una operación simple insert en la tabla `Like`.
     const like = await this.prisma.like.create({
       data: {
         userId,
@@ -723,15 +763,16 @@ export class TweetsService {
       },
     });
 
-    // Obtener el autor del tweet para notificar
+    // Obtener el autor del tweet para decidir si enviar notificación.
     const tweet = await this.prisma.tweet.findUnique({
       where: { id: tweetId },
       select: { authorId: true },
     });
 
-    // evita notificarte a ti mismo o si no hay autor
+    // Si no hay autor o el autor es el mismo usuario que hizo el like, no enviar notificación.
+    // En ambos casos debemos devolver el tweet actualizado con includes para que el cliente
+    // reciba los flags actualizados (ej. likedByCurrentUser=true).
     if (!tweet?.authorId || tweet.authorId === userId) {
-      // Return updated tweet DTO even if no notification is sent
       const updated = await this.prisma.tweet.findUnique({
         where: { id: tweetId },
         include: {
@@ -771,12 +812,14 @@ export class TweetsService {
       createdAt: new Date().toISOString(),
     };
 
+    // Encolar notificación para el autor del tweet. La cola maneja reintentos y backoff.
     await this.notificationsQueue.add("like-notify", payload, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },
       removeOnComplete: true,
     });
 
+    // Si corresponde, encolar notificación y retornar tweet actualizado
     const updated = await this.prisma.tweet.findUnique({
       where: { id: tweetId },
       include: {
@@ -804,6 +847,7 @@ export class TweetsService {
   }
 
   async unlike(userId: string, tweetId: string) {
+    // Quitar el registro de `Like` para este usuario/tweet. Prisma lanzará si no existe.
     await this.prisma.like.delete({
       where: {
         userId_tweetId: {
@@ -813,6 +857,8 @@ export class TweetsService {
       },
     });
 
+    // Tras eliminar el like, recuperamos el tweet con includes filtrados por `userId`
+    // para que el `TweetResponseDto` pueda devolver flags actualizados (`likedByCurrentUser=false`).
     const updated = await this.prisma.tweet.findUnique({
       where: { id: tweetId },
       include: {
@@ -825,12 +871,14 @@ export class TweetsService {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
         parent: {
           include: {
             author: { select: { id: true, name: true, email: true } },
             _count: { select: { likes: true, replies: true, retweets: true } },
+            bookmarks: { where: { userId }, select: { userId: true } },
           },
         },
       },
@@ -841,12 +889,12 @@ export class TweetsService {
 
   // REPLY
   async reply(userId: string, parentId: string, dto: CreateTweetDto) {
+    // Crear una respuesta (reply) asociada al tweet `parentId` y notificar al autor original si procede
     const created = await this.createTweet(userId, {
       content: dto.content,
       parentId,
     });
 
-    // Notificar al autor del tweet original
     const original = await this.prisma.tweet.findUnique({
       where: { id: parentId },
       select: { authorId: true },
@@ -872,12 +920,15 @@ export class TweetsService {
 
   // BOOKMARK
   async bookmarkTweet(userId: string, tweetId: string) {
+    // Guardar marca (bookmark) para el usuario sobre el tweet indicado
+    // La tabla `Bookmark` tiene una restricción única (userId, tweetId)
     return this.prisma.bookmark.create({
       data: { userId, tweetId },
     });
   }
 
   async unbookmarkTweet(userId: string, tweetId: string) {
+    // Quitar bookmark del usuario sobre el tweet indicado
     return this.prisma.bookmark.delete({
       where: {
         userId_tweetId: {
@@ -892,6 +943,8 @@ export class TweetsService {
   async getBookmarkedTweets(userId: string, take = 20, cursor?: string) {
     const limit = take;
 
+    // Buscar bookmarks del usuario y extraer los tweets relacionados
+    // La paginación se realiza sobre la entidad Bookmark (orden por Bookmark.createdAt)
     const findOptions: any = {
       where: { userId },
       include: {
@@ -935,6 +988,8 @@ export class TweetsService {
       returned = bookmarks.slice(0, limit);
     }
 
+    // Extraer la entidad `tweet` desde cada Bookmark y mapear a DTO.
+    // Observación: `Bookmark.createdAt` es la base de la paginación, pero devolvemos los tweets asociados.
     const tweets = returned.map((b: any) => b.tweet);
 
     return new PaginatedResponse(
@@ -964,6 +1019,9 @@ export class TweetsService {
       deletedAt: null,
     };
 
+    // La consulta del feed incluye flags prefiltrados (likes, bookmarks, retweets)
+    // para que el DTO pueda producir `likedByCurrentUser` y `bookmarked` sin llamadas extra.
+    // Se incluye además un nivel adicional de `retweetOf` para devolver retweets anidados.
     const tweets = await this.prisma.tweet.findMany({
       where,
       include: {
@@ -1059,7 +1117,7 @@ export class TweetsService {
       }),
     });
 
-    // Mapeo a TweetResponseDto y construcción de FeedResponseDto
+    // Mapeo a `TweetResponseDto`. El DTO leerá los includes filtrados para establecer flags.
     return new FeedResponseDto(
       tweets.map(
         (t) =>

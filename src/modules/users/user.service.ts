@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, Post } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service.js";
 import { UserFilterDto } from "./dto/user-filter.dto.js";
 import { UserResponseDto } from "./dto/user-response.dto.js";
@@ -13,6 +13,10 @@ import { InjectQueue } from "@nestjs/bull";
 
 @Injectable()
 export class UserService {
+  // Servicio de usuarios: búsqueda, perfiles, follow/unfollow y operaciones relacionadas
+  // - Mantener la lógica existente; añadir comentarios para facilitar mantenimiento
+  // - No cambiar comportamiento de retorno ni tipos de error salvo corrección crítica
+
   private toFollowStatus(isFollowing: boolean, isFollowedBy: boolean) {
     if (isFollowing && isFollowedBy) return 'mutual' as const;
     if (isFollowing) return 'following' as const;
@@ -101,7 +105,8 @@ export class UserService {
       returned = users.slice(0, limit);
     }
 
-    // return lightweight summary for lists
+    // Devolver resumen ligero para listados (UserSummaryDto)
+    // Se evita exponer datos sensibles en las listas públicas
     if (currentUserId && returned.length > 0) {
       const ids = returned.map(u => u.id);
       const iFollow = await this.prisma.follow.findMany({ where: { followerId: currentUserId, followingId: { in: ids } } });
@@ -154,11 +159,13 @@ export class UserService {
      },
    });
 
+  // Validar existencia y estado del usuario
+  // - Rechazar usuarios marcados como eliminados (soft-delete)
   if (!user || user.deletedAt) {
     throw new Error('User not found');
   }
 
-  // If the requester is viewing their own profile, return explicit 'self' status
+  // Si el solicitante consulta su propio perfil, devolver estado 'self'
   if (currentUserId && currentUserId === id) {
     return {
       id: user.id,
@@ -174,6 +181,8 @@ export class UserService {
     };
   }
 
+  // Comprobar relaciones de follow entre el solicitante y el perfil consultado.
+  // Estas comprobaciones permiten presentar un estado de relación (`followStatus`) útil para la UI.
   const isFollowing = currentUserId
     ? !!(await this.prisma.follow.findFirst({ where: { followerId: currentUserId, followingId: id } }))
     : false;
@@ -216,7 +225,8 @@ export class UserService {
      findOptions.skip = 1;
    }
 
-   const users = await this.prisma.user.findMany(findOptions);
+  // Obtener usuarios que siguen al userId (paginado)
+  const users = await this.prisma.user.findMany(findOptions);
    let nextCursor: string | null = null;
    let returned = users;
    if (users.length > limit) {
@@ -261,6 +271,7 @@ export class UserService {
  }
 
   async update(userId: string, dto: UpdateUserDto) {
+    // Actualizar campos del usuario autenticado
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.deletedAt) {
       throw new Error('User not found');
@@ -303,7 +314,8 @@ export class UserService {
      findOptions.cursor = { id: pagination.cursor };
      findOptions.skip = 1;
    }
-   const users = await this.prisma.user.findMany(findOptions);
+  // Obtener usuarios a los que sigue userId (paginado)
+  const users = await this.prisma.user.findMany(findOptions);
    let nextCursor: string | null = null;
    let returned = users;
    if (users.length > limit) {
@@ -349,6 +361,7 @@ export class UserService {
 
  // FOLLOW/UNFOLLOW
   async followUser(userId: string, targetUserId: string) {
+    // Crear relación de follow entre usuarios
     if (userId === targetUserId) {
       throw new BadRequestException("You cannot follow yourself");
     }
@@ -389,6 +402,7 @@ export class UserService {
   }
 
   async unfollowUser(userId: string, targetUserId: string) {
+    // Eliminar relación de follow si existe
     const existingFollow = await this.prisma.follow.findUnique({
       where: {
         followerId_followingId: {

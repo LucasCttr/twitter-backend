@@ -27,7 +27,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayInit,
   constructor(private readonly feedService: FeedService) {}
 
   async afterInit() {
-    // configure redis adapter when REDIS_URL is present
+    // Configurar adaptador Redis para escalabilidad (si hay REDIS_URL)
     const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
     try {
       const pubClient = createClient({ url: redisUrl });
@@ -70,7 +70,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayInit,
         client.disconnect(true);
         return;
       }
-      // Verificar token
+      // Verificar token JWT y extraer userId
       let payload: any;
       try {
         payload = verifyJwt(token);
@@ -85,7 +85,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayInit,
         client.disconnect(true);
         return;
       }
-      // Unir a la room del usuario
+      // Unir socket a la sala del usuario (room: user:<userId>)
       await client.join(`user:${userId}`);
       // Guardar userId en el socket para limpieza posterior
       (client as any).userId = userId;

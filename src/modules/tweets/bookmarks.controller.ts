@@ -11,6 +11,7 @@ export class BookmarksController {
 
   @Get("")
   @UseGuards(JwtAuthGuard)
+  // Devolver lista paginada de tweets marcados (bookmarks) por el usuario actual.
   getBookmarks(@CurrentUser() user: JwtPayload, @Query() pagination: CursorPaginationDto) {
     const limit = pagination.limit ?? 20;
     return this.tweetsService.getBookmarkedTweets(user.id, limit, pagination.cursor);
@@ -19,12 +20,14 @@ export class BookmarksController {
   @Post(':tweetId')
   @UseGuards(JwtAuthGuard)
   bookmark(@CurrentUser() user: JwtPayload, @Param('tweetId') tweetId: string) {
+    // Añadir un bookmark para el usuario actual en el tweet indicado.
     return this.tweetsService.bookmarkTweet(user.id, tweetId);
   }
 
   @Delete(':tweetId')
   @UseGuards(JwtAuthGuard)
   unbookmark(@CurrentUser() user: JwtPayload, @Param('tweetId') tweetId: string) {
+    // Quitar el bookmark del usuario actual en el tweet indicado.
     return this.tweetsService.unbookmarkTweet(user.id, tweetId);
   }
 }

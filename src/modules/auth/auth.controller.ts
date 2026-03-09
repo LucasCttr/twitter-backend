@@ -25,9 +25,8 @@ export class AuthController {
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() body: RegisterDto) {
-    // Si authService lanza un error, deja que suba
-    // NestJS lo captura y responde 500 automáticamente
-    // O lanza BadRequestException desde el service
+    // Registrar nuevo usuario
+    // Dejar que el service lance excepciones específicas (BadRequestException)
     return this.authService.registerUser(body);
   }
 
@@ -49,6 +48,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get("profile")
   async profile(@Req() req: any) {
+    // Devuelve información del usuario autenticado
     return { user: req.user };
   }
 
@@ -89,6 +89,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     });
+    // Respuesta simple indicando logout
     return { message: "Logged out" };
   }
 }

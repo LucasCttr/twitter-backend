@@ -9,8 +9,8 @@ import { Prisma } from "../../../../generated/prisma/browser";
 import { PrismaService } from "../../../database/prisma.service";
 // Puedes importar enums si los necesitas
 
-// Este processor maneja las notificaciones relacionadas con acciones sociales, como likes y follows. 
-// Se encarga de procesar los trabajos en la cola "social-notify" y emitir eventos a través del NotificationsGateway para notificar a los usuarios en tiempo real sobre estas interacciones.
+// Processor para manejar notificaciones en la cola `notifications`.
+// Procesa jobs (like, follow, retweet, reply) y emite eventos vía WebSocket a los usuarios implicados.
 @Processor("notifications")
 export class NotificationsProcessor {
   constructor(

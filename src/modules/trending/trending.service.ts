@@ -11,8 +11,8 @@ export class TrendingService {
 	private readonly logger = new Logger(TrendingService.name);
 
 	/**
-	 * Scraping trends24.in para obtener tendencias reales de twitter.
-	 * si includeCounts es true, también se intentará obtener la cantidad de tweets para cada tendencia, aunque esto no siempre está disponible.
+	 * Obtener tendencias mediante scraping de trends24.in.
+	 * Si `includeCounts` es true, se intentará leer el contador de tweets cuando esté disponible.
 	 */
 	async getTrending(
 		country = 'united-states',
@@ -37,6 +37,8 @@ export class TrendingService {
 
 						let cantidad: string | null = null;
 						if (includeCounts) {
+							// Algunos sites muestran el contador en un span con clase `tweet-count`.
+							// Intentamos leer `data-count` y si no existe usamos el texto visible.
 							const countSpan = $(li).find('span.tweet-count').first();
 							const dataCount = countSpan.attr('data-count') || countSpan.text();
 							if (dataCount && dataCount !== '') {

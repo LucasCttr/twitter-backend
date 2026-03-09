@@ -24,16 +24,10 @@ constructor(private readonly prisma: PrismaService) {}
     textPreview?: string;
     url?: string;
   }) {
-    return this.prisma.notification.create({
-      data: {
-        userId,
-        actorId,
-        action,
-        targetType,
-        targetId,
-        textPreview,
-      },
-    });
+    // Crear una notificación ligada al usuario receptor (`userId`).
+    // `actorId` es quien provoca la acción (ej. quien sigue, likea, retweetea),
+    // `action` y `targetType` describen el tipo y objetivo de la notificación.
+    return this.prisma.notification.create({ data: { userId, actorId, action, targetType, targetId, textPreview } });
   }
 
   async getUnreadCount(userId: string): Promise<number> {
@@ -41,6 +35,7 @@ constructor(private readonly prisma: PrismaService) {}
   }
 
   async getNotifications(userId: string, limit = 20, cursor?: string) {
+    // Obtener notificaciones del usuario ordenadas por fecha
     const where = { userId };
     const notifications = await this.prisma.notification.findMany({
       where,
@@ -58,9 +53,9 @@ constructor(private readonly prisma: PrismaService) {}
   }
 
   async markRead(userId: string, ids?: string[]) {
-    const where = ids && ids.length > 0
-      ? { userId, id: { in: ids } }
-      : { userId, read: false };
+    // Marcar notificaciones como leídas. Si `ids` se pasa, marcar solo esos ids;
+    // si no, marcar todas las no leídas del usuario.
+    const where = ids && ids.length > 0 ? { userId, id: { in: ids } } : { userId, read: false };
     await this.prisma.notification.updateMany({ where, data: { read: true } });
     return this.getUnreadCount(userId);
   }
