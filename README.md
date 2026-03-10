@@ -2,7 +2,8 @@
 
 Resumen
 
-- Backend estilo Twitter construido con NestJS y TypeScript. Implementa autenticación, publicación de tweets, likes, bookmarks, seguimientos, feed con paginación, y notificaciones en tiempo real via WebSockets.
+- Backend estilo Twitter construido con NestJS y TypeScript con fines de aprendizaje. Implementa autenticación, publicación de tweets, likes, bookmarks, seguimientos, feed con paginación, y notificaciones en tiempo real via WebSockets.
+
 
 Stack tecnológico
 
@@ -14,6 +15,14 @@ Stack tecnológico
 - WebSockets: Socket.IO + adaptador Redis
 - Contenedores: Docker / docker-compose
 - Otras: Passport (local + JWT), bcrypt, Zod, Axios, Cheerio
+
+
+## Diagrama de arquitectura (assets)
+
+Se incluye el diagrama en la carpeta `assets`:
+
+![Diagrama de arquitectura](assets/Diagrama.psd.jpg)
+
 
 Características implementada
 
