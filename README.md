@@ -1,119 +1,119 @@
-# Twitter-like Backend (Proyecto con fin de aprendizaje)
+# Twitter-like Backend (Learning project)
 
-Resumen
+Summary
 
-- Backend estilo Twitter construido con NestJS y TypeScript con fines de aprendizaje. Implementa autenticación, publicación de tweets, likes, bookmarks, seguimientos, feed con paginación, y notificaciones en tiempo real via WebSockets.
+- Twitter-like backend built with NestJS and TypeScript for learning purposes. Implements authentication, tweet posting, likes, bookmarks, follows, cursor-paginated feed, and real-time notifications via WebSockets.
 
 
-Stack tecnológico
+Tech stack
 
-- Lenguaje: TypeScript
+- Language: TypeScript
 - Framework: NestJS (v11)
 - ORM: Prisma
-- Base de datos: PostgreSQL
-- Cache / messaging: Redis (usado como adaptador de Socket.IO para notificaciones)
-- WebSockets: Socket.IO + adaptador Redis
-- Contenedores: Docker / docker-compose
-- Otras: Passport (local + JWT), bcrypt, Zod, Axios, Cheerio
+- Database: PostgreSQL
+- Cache / messaging: Redis (used as a Socket.IO adapter for notifications)
+- WebSockets: Socket.IO + Redis adapter
+- Containers: Docker / docker-compose
+- Others: Passport (local + JWT), bcrypt, Zod, Axios, Cheerio
 
 
-## Diagrama de arquitectura (assets)
+## Architecture diagram (assets)
 
-Se incluye el diagrama en la carpeta `assets`:
+The diagram is included in the `assets` folder:
 
-![Diagrama de arquitectura](assets/Diagrama.psd.jpg)
+![Architecture diagram](assets/Diagrama.psd.jpg)
 
 
-Características implementada
+Implemented features
 
-- Autenticación y autorización
-  - Registro y login con contraseña hasheada (`bcrypt`)
-  - Autenticación con JWT y refresh tokens
-- Usuarios
-  - Perfiles de usuario, imagen de perfil (campo en el modelo)
-  - Seguir / dejar de seguir usuarios
+- Authentication and authorization
+  - Register and login with hashed password (`bcrypt`)
+  - Authentication with JWT and refresh tokens
+- Users
+  - User profiles, profile image (field in the model)
+  - Follow / unfollow users
 - Tweets
-  - Crear, listar y eliminar tweets
-  - Likes y bookmarks (relaciones en la DB)
+  - Create, list and delete tweets
+  - Likes and bookmarks (relations in the DB)
 - Feed
-  - Feed paginado por cursor (DTOs de paginación)
-  - Endpoint para timeline y para obtener tweets de un usuario
-- Notificaciones en tiempo real
-  - Gateway WebSocket en `src/modules/notifications/notifications.gateway.ts`
-  - Redis adapter para escalar el gateway entre instancias (si `REDIS_URL` está disponible)
-- Mensajería privada (básica) mediante módulo `messages`
-- Trending / métricas básicas
-- Gestión de tareas en background (dependencia `@nestjs/bull` presente para jobs)
-- Migraciones y modelos gestionados con Prisma (`prisma/schema.prisma` y `prisma/migrations`)
+  - Cursor-paginated feed (pagination DTOs)
+  - Endpoint for timeline and to get a user's tweets
+- Real-time notifications
+  - WebSocket gateway at `src/modules/notifications/notifications.gateway.ts`
+  - Redis adapter to scale the gateway across instances (if `REDIS_URL` is available)
+- Private messaging (basic) via the `messages` module
+- Trending / basic metrics
+- Background job management (dependency `@nestjs/bull` present for jobs)
+- Migrations and models managed with Prisma (`prisma/schema.prisma` and `prisma/migrations`)
 
-Arquitectura y organización del código
+Architecture and code organization
 
-- Código organizado por módulos en `src/modules/` (ej.: `auth`, `users`, `tweets`, `feed`, `notifications`, `messages`, `trending`).
-- `src/main.ts` y `src/app.module.ts` actúan como punto de entrada e inicialización de NestJS.
-- `src/database/prisma.service.ts` encapsula el cliente de Prisma.
-- DTOs y validaciones con `class-validator` y `class-transformer`.
+- Code organized by modules under `src/modules/` (e.g., `auth`, `users`, `tweets`, `feed`, `notifications`, `messages`, `trending`).
+- `src/main.ts` and `src/app.module.ts` act as the NestJS entry and initialization points.
+- `src/database/prisma.service.ts` encapsulates the Prisma client.
+- DTOs and validations use `class-validator` and `class-transformer`.
 
-Docker y despliegue local
+Docker and local deployment
 
-- Servicios principales definidos en [docker-compose.yml](docker-compose.yml):
+- Main services are defined in [docker-compose.yml](docker-compose.yml):
   - `db` (Postgres)
   - `redis` (Redis)
-  - `backend` (esta aplicación)
+  - `backend` (this application)
 
-Comandos comunes
+Common commands
 
-- Levantar dependencias con Docker (Postgres + Redis):
+- Start dependencies with Docker (Postgres + Redis):
 
 ```bash
 docker-compose up -d db redis
 ```
 
-- Instalar dependencias y correr en modo desarrollo:
+- Install dependencies and run in development mode:
 
 ```bash
 npm install
 npm run start:dev
 ```
 
-- Migraciones y reset de DB con Prisma:
+- Prisma migrations and DB reset:
 
 ```bash
-# Aplicar migraciones
+# Apply migrations
 npx prisma migrate deploy
-# O en desarrollo
+# Or in development
 npx prisma migrate dev
-# Resetear la base de datos (PELIGRO: borra todo)
+# Reset the database (DANGER: deletes all data)
 npx prisma migrate reset --force
 ```
 
-- Alternativa para resetar esquema usando el contenedor si corresponde:
+- Alternative to reset schema using the container if applicable:
 
 ```bash
-# Desde el contenedor backend (si tienes prisma instalado dentro)
-# o con npx desde el host (ver arriba)
+# From the backend container (if Prisma is installed inside)
+# or with npx from the host (see above)
 ```
 
-Variables de entorno relevantes
+Relevant environment variables
 
-- `DATABASE_URL` — URL de conexión a Postgres (ej: `postgres://user:pass@db:5432/twitter`)
-- `REDIS_URL` — URL de Redis (ej: `redis://redis:6379`) (usado por el adaptador de Socket.IO)
-- `JWT_SECRET` — clave para firmar JWTs
-- `NODE_ENV`, `PORT` y otras según `src/main.ts` y `Dockerfile`/`docker-compose`.
+- `DATABASE_URL` — Postgres connection URL (e.g. `postgres://user:pass@db:5432/twitter`)
+- `REDIS_URL` — Redis URL (e.g. `redis://redis:6379`) (used by the Socket.IO adapter)
+- `JWT_SECRET` — secret key used to sign JWTs
+- `NODE_ENV`, `PORT` and others as referenced in `src/main.ts` and the Docker configuration.
 
-Uso de Redis en este proyecto
+Redis usage in this project
 
-- Actualmente Redis se usa para el adaptador de Socket.IO en `src/modules/notifications/notifications.gateway.ts` para permitir notificaciones en tiempo real entre instancias.
-- No se utiliza como cache general (por ejemplo `cache-manager` no está integrado en el código actual).
+- Redis is currently used as the Socket.IO adapter in `src/modules/notifications/notifications.gateway.ts` to enable real-time notifications across instances.
+- It is not used as a general cache (for example, `cache-manager` is not integrated in the current codebase).
 
 
-Endpoints principales (resumen)
+Main endpoints (summary)
 
-- `POST /auth/register` — Registrar usuario
-- `POST /auth/login` — Login y obtención de tokens
-- `POST /tweets` — Crear tweet
-- `GET /feed` — Obtener feed (paginado por cursor)
+- `POST /auth/register` — Register a new user
+- `POST /auth/login` — Login and receive tokens
+- `POST /tweets` — Create a tweet
+- `GET /feed` — Get the feed (cursor-paginated)
 - `POST /tweets/:id/like` — Like a tweet
-- `POST /bookmarks` — Bookmark (módulo bookmarks)
-- WebSocket `/notifications` — Conexión para notificaciones en tiempo real
+- `POST /bookmarks` — Create a bookmark (bookmarks module)
+- WebSocket `/notifications` — Connect for real-time notifications
 
-(Esta lista es un resumen; ver controladores en `src/modules/*/*.controller.ts` para rutas completas y detalles.)
+(This is a summary; see controllers under `src/modules/*/*.controller.ts` for full routes and details.)
